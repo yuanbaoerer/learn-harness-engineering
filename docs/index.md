@@ -9,6 +9,7 @@ if (typeof window !== 'undefined') {
   let locale = 'en/'
   if (lang.startsWith('ko')) locale = 'ko/'
   else if (lang.toLowerCase().startsWith('zh-tw') || lang.toLowerCase().startsWith('zh-hk') || lang.toLowerCase().startsWith('zh-mo')) locale = 'zh-TW/'
+  else if (lang.toLowerCase().startsWith('pt-br')) locale = 'pt-BR/'
   else if (lang.startsWith('zh')) locale = 'zh/'
   else if (lang.startsWith('ru')) locale = 'ru/'
   else if (lang.startsWith('vi')) locale = 'vi/'
@@ -18,6 +19,7 @@ if (typeof window !== 'undefined') {
   else if (lang.startsWith('fr')) locale = 'fr/'
   else if (lang.startsWith('de')) locale = 'de/'
   else if (lang.startsWith('ar')) locale = 'ar/'
+  
   const target = `${base}${locale}`
   if (!window.location.pathname.replace(/\/$/, '').endsWith(target.replace(/\/$/, ''))) {
     window.location.replace(target)
