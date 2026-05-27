@@ -1,6 +1,6 @@
 # Project 05. 讓代理自己檢查自己做得對不對
 
-> 相關講義：[L09. 為什麼 agent 會提前宣告完成](./../../lectures/lecture-09-why-agents-declare-victory-too-early/index.md) · [L10. 為什麼端到端測試會改變結果](./../../lectures/lecture-10-why-end-to-end-testing-changes-results/index.md)
+> 相關講義：[L09. 防止 agent 提前宣告完成](./../../lectures/lecture-09-why-agents-declare-victory-too-early/index.md) · [L10. 跑通完整流程才算真正驗證](./../../lectures/lecture-10-why-end-to-end-testing-changes-results/index.md)
 > 本篇範本檔案：[templates/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/zh-TW/resources/templates/)
 
 ## 你要做什麼

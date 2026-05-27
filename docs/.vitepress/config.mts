@@ -454,16 +454,16 @@ const zhTWLectureItems = [
   { text: "歡迎", link: "/zh-TW/" },
   { text: "模型能力強，不等於執行可靠", link: "/zh-TW/lectures/lecture-01-why-capable-agents-still-fail/" },
   { text: "Harness 到底是什麼", link: "/zh-TW/lectures/lecture-02-what-a-harness-actually-is/" },
-  { text: "讓代碼倉庫成為唯一的事實來源", link: "/zh-TW/lectures/lecture-03-why-the-repository-must-become-the-system-of-record/" },
+  { text: "讓程式碼儲存庫成為唯一的事實來源", link: "/zh-TW/lectures/lecture-03-why-the-repository-must-become-the-system-of-record/" },
   { text: "把指令拆分到不同檔案裡", link: "/zh-TW/lectures/lecture-04-why-one-giant-instruction-file-fails/" },
-  { text: "讓跨會話的任務保持上下文連續", link: "/zh-TW/lectures/lecture-05-why-long-running-tasks-lose-continuity/" },
+  { text: "讓跨工作階段的任務保持脈絡連續", link: "/zh-TW/lectures/lecture-05-why-long-running-tasks-lose-continuity/" },
   { text: "讓 agent 每次工作前先初始化", link: "/zh-TW/lectures/lecture-06-why-initialization-needs-its-own-phase/" },
   { text: "給 agent 劃清每次任務的邊界", link: "/zh-TW/lectures/lecture-07-why-agents-overreach-and-under-finish/" },
   { text: "用功能清單約束 agent 該做什麼", link: "/zh-TW/lectures/lecture-08-why-feature-lists-are-harness-primitives/" },
   { text: "防止 agent 提前宣告完成", link: "/zh-TW/lectures/lecture-09-why-agents-declare-victory-too-early/" },
   { text: "跑通完整流程才算真正驗證", link: "/zh-TW/lectures/lecture-10-why-end-to-end-testing-changes-results/" },
-  { text: "讓 agent 的運行過程可觀測", link: "/zh-TW/lectures/lecture-11-why-observability-belongs-inside-the-harness/" },
-  { text: "每次會話結束前都做好交接", link: "/zh-TW/lectures/lecture-12-why-every-session-must-leave-a-clean-state/" }
+  { text: "讓 agent 的執行過程可觀測", link: "/zh-TW/lectures/lecture-11-why-observability-belongs-inside-the-harness/" },
+  { text: "每次工作階段結束前都做好交接", link: "/zh-TW/lectures/lecture-12-why-every-session-must-leave-a-clean-state/" }
 ];
 
 const zhTWProjectItems = [

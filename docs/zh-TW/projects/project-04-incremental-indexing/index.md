@@ -1,6 +1,6 @@
 # Project 04. 用執行回饋修正代理的行為
 
-> 相關講義：[L07. 為什麼 agent 會多做或少做](./../../lectures/lecture-07-why-agents-overreach-and-under-finish/index.md) · [L08. 為什麼功能清單是 harness 原語](./../../lectures/lecture-08-why-feature-lists-are-harness-primitives/index.md)
+> 相關講義：[L07. 給 agent 劃清每次任務的邊界](./../../lectures/lecture-07-why-agents-overreach-and-under-finish/index.md) · [L08. 用功能清單約束 agent 該做什麼](./../../lectures/lecture-08-why-feature-lists-are-harness-primitives/index.md)
 > 本篇範本檔案：[templates/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/zh-TW/resources/templates/)
 
 ## 你要做什麼

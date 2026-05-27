@@ -1,6 +1,6 @@
 # Project 06. 搭建完整的代理工作環境
 
-> 相關講義：[L11. 為什麼可觀測性屬於 harness](./../../lectures/lecture-11-why-observability-belongs-inside-the-harness/index.md) · [L12. 為什麼每次工作階段都要留乾淨狀態](./../../lectures/lecture-12-why-every-session-must-leave-a-clean-state/index.md)
+> 相關講義：[L11. 讓 agent 的執行過程可觀測](./../../lectures/lecture-11-why-observability-belongs-inside-the-harness/index.md) · [L12. 每次工作階段結束前都做好交接](./../../lectures/lecture-12-why-every-session-must-leave-a-clean-state/index.md)
 > 本篇範本檔案：[templates/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/zh-TW/resources/templates/)
 
 ## 你要做什麼

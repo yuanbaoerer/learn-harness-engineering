@@ -1,6 +1,6 @@
 # Project 03. 讓代理重啟後還能繼續執行
 
-> 相關講義：[L05. 為什麼長時任務會遺失脈絡](./../../lectures/lecture-05-why-long-running-tasks-lose-continuity/index.md) · [L06. 為什麼初始化需要單獨一個階段](./../../lectures/lecture-06-why-initialization-needs-its-own-phase/index.md)
+> 相關講義：[L05. 讓跨工作階段的任務保持脈絡連續](./../../lectures/lecture-05-why-long-running-tasks-lose-continuity/index.md) · [L06. 讓 agent 每次工作前先初始化](./../../lectures/lecture-06-why-initialization-needs-its-own-phase/index.md)
 > 本篇範本檔案：[templates/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/zh-TW/resources/templates/)
 
 ## 你要做什麼

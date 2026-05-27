@@ -1,6 +1,6 @@
 # Project 02. 讓代理看懂專案、銜接上次的工作
 
-> 相關講義：[L03. 讓代碼倉庫成為唯一的事實來源](./../../lectures/lecture-03-why-the-repository-must-become-the-system-of-record/index.md) · [L04. 為什麼一個巨大的指令檔案會失敗](./../../lectures/lecture-04-why-one-giant-instruction-file-fails/index.md)
+> 相關講義：[L03. 讓程式碼儲存庫成為唯一的事實來源](./../../lectures/lecture-03-why-the-repository-must-become-the-system-of-record/index.md) · [L04. 把指令拆分到不同檔案裡](./../../lectures/lecture-04-why-one-giant-instruction-file-fails/index.md)
 > 本篇範本檔案：[templates/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/zh-TW/resources/templates/)
 
 ## 你要做什麼
