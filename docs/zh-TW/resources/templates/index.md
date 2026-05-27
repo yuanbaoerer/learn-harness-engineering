@@ -31,7 +31,7 @@
 - 讓它在開始工作前先讀進度和功能狀態
 - 逼它一次只做一個功能
 - 要求它拿出證據才能標記完成
-- 定義了什麼叫"乾淨收尾"
+- 定義了什麼叫「乾淨收尾」
 
 用 `AGENTS.md` 給 Codex 或其他 agent。用 `CLAUDE.md` 給 Claude Code——內容一樣，格式按 Claude 的指令風格來的。
 
@@ -64,7 +64,7 @@
 **怎麼用：**
 
 - 複製到專案根目錄
-- 把"目前已驗證狀態"那段填上你的專案資訊
+- 把「目前已驗證狀態」那段填上你的專案資訊
 - 每輪工作階段結束後更新工作階段記錄
 
 **每個字段的意思：**
@@ -95,7 +95,7 @@
 - 每個功能需要填：
   - `id` — 短的唯一標識
   - `priority` — 整數，越小越優先
-  - `area` — 屬於應用的哪塊（比如 "chat"、"import"、"search"）
+  - `area` — 屬於應用的哪塊（比如 「chat」、「import」、「search」）
   - `title` — 簡短描述
   - `user_visible_behavior` — 功能正常時使用者能看到什麼
   - `status` — 四種狀態之一：`not_started`、`in_progress`、`blocked`、`passing`
@@ -205,8 +205,8 @@ agent 任何時候只能有一個功能處於 `in_progress`。
 
 Evaluator rubric 評的是單次 agent 輸出的品質。Quality document 評的是程式碼庫本身的品質。它們回答的是不同的問題：
 
-- Evaluator rubric："這輪 agent 做得好不好？"
-- Quality document："這個專案是在變強還是變弱？"
+- Evaluator rubric：「這輪 agent 做得好不好？」
+- Quality document：「這個專案是在變強還是變弱？」
 
 **什麼時候更新：**
 

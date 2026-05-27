@@ -11,7 +11,7 @@
 
 Anthropic 和 OpenAI 都強調：**工件必須外部化**。功能狀態必須是儲存庫裡機器可讀的檔案，不能是對話裡的非結構化描述。
 
-## Agent 不知道"做完"是什麼意思
+## Agent 不知道「做完」是什麼意思
 
 Claude Code 和 Codex 都不會自動知道你心目中的「做完」是什麼意思。你說「加一個購物車功能」，模型的理解可能是「寫一個 Cart 元件和 addToCart 方法」。而你的意思是「使用者能從瀏覽商品到下單支付完整走通」。
 
@@ -61,7 +61,7 @@ flowchart LR
 - **單一權威來源**：專案裡關於「該做什麼」的所有資訊，必須從一個功能清單派生。不能出現功能清單和對話記錄矛盾的情況。
 - **反向壓力**：還沒通過的功能項數量就是 harness 對 agent 施加的壓力。壓力歸零 = 專案完成。
 
-## 為什麼功能清單必須是"原語"
+## 為什麼功能清單必須是「原語」
 
 文件是給人看的，原語是給系統用的。文件可以被忽略，原語不能被繞過。
 
@@ -129,7 +129,7 @@ agent 不能直接把狀態改成 `passing`。它只能提交驗證請求，harn
 ## 延伸閱讀
 
 - [Building Effective Agents - Anthropic](https://www.anthropic.com/research/building-effective-agents) — 明確指出功能清單是控制 agent 執行範圍的「核心資料結構」
-- [Harness Engineering - OpenAI](https://openai.com/index/harness-engineering/) — 強調"將工件外部化"的原則
+- [Harness Engineering - OpenAI](https://openai.com/index/harness-engineering/) — 強調「將工件外部化」的原則
 - [Design by Contract - Bertrand Meyer](https://www.goodreads.com/book/show/130439.Object_Oriented_Software_Construction) — 契約式設計原則，功能列表的理論基礎
 - [How Google Tests Software](https://www.goodreads.com/book/show/13563030-how-google-tests-software) — 測試金字塔和行為規格的工程實踐
 

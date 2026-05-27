@@ -7,7 +7,7 @@
 
 你讓 agent 給 Electron 應用加一個檔案匯出功能。它寫了渲染程式元件、預載腳本、服務層邏輯，每個元件的單元測試都通過了。agent 說「做完了」。你實際一點擊匯出按鈕，檔案路徑格式不對、進度列沒反應、大檔案匯出時記憶體洩漏。5 個元件邊界缺陷，單元測試一個都沒發現。
 
-這就像一個合唱團排練——每個聲部單獨唱的時候都完美，但合在一起的時候，女高音比男低音快了半拍，伴奏的調子和主旋律差了半個音。每個部分都"對"了，但整體跑調了。
+這就像一個合唱團排練——每個聲部單獨唱的時候都完美，但合在一起的時候，女高音比男低音快了半拍，伴奏的調子和主旋律差了半個音。每個部分都「對」了，但整體跑調了。
 
 Google 的測試金字塔告訴我們：大量單元測試是基礎，但如果你止步於此，就會持續漏掉元件互動問題。對於 AI 程式碼代理來說，這個問題更嚴重，agent 傾向於只跑最快的測試然後宣告完成。**只有端到端測試能證明系統級缺陷不存在**。
 
@@ -57,7 +57,7 @@ flowchart LR
     Harness --> Stronger["以後再犯會第一時間報錯"]
 ```
 
-OpenAI 在 Codex 工程實踐中強調：**為 agent 寫的錯誤訊息必須包含修復指導**。不寫 `"Direct filesystem access in renderer"`，而寫 `"Direct filesystem access in renderer. All file operations must go through the preload bridge. Move this call to preload/file-ops.ts and invoke it via window.api."` 這把架構規則變成了自動修正的閉環。就像合唱排練時指揮不只說「你唱錯了」，而是說「這裡你快了半拍，聽一下女低音的節奏，在第 32 小節進入」。
+OpenAI 在 Codex 工程實踐中強調：**為 agent 寫的錯誤訊息必須包含修復指導**。不寫 `「Direct filesystem access in renderer」`，而寫 `「Direct filesystem access in renderer. All file operations must go through the preload bridge. Move this call to preload/file-ops.ts and invoke it via window.api.」` 這把架構規則變成了自動修正的閉環。就像合唱排練時指揮不只說「你唱錯了」，而是說「這裡你快了半拍，聽一下女低音的節奏，在第 32 小節進入」。
 
 ## 核心概念
 
