@@ -41,7 +41,7 @@ Learn Harness Engineering is a course dedicated to the engineering of AI coding 
 
 ## Table of Contents
 
-- [✨ Visual Preview](#visual-preview)
+- [✨ Visual Preview](#-visual-preview)
 - [What Harness Engineering Actually Means](#what-harness-engineering-actually-means)
 - [Quick Start: Improve Your Agent Today](#quick-start-improve-your-agent-today)
 - [Capstone Project: A Real App](#capstone-project-a-real-app)
