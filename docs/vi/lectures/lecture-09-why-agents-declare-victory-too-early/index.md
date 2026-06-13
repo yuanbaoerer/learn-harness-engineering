@@ -1,145 +1,143 @@
 [English Version →](../../../en/lectures/lecture-09-why-agents-declare-victory-too-early/) | [中文版本 →](../../../zh/lectures/lecture-09-why-agents-declare-victory-too-early/)
 
-> Mã nguồn ví dụ cho bài giảng này: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-09-why-agents-declare-victory-too-early/code/)
+> Code ví dụ cho bài giảng này: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-09-why-agents-declare-victory-too-early/code/)
 > Thực hành: [Dự án 05. Để agent tự xác minh công việc của mình](./../../projects/project-05-grounded-qa-verification/index.md)
 
-# Bài 9. Ngăn chặn Agent Tuyên bố Thành công Quá sớm
+# Bài 9. Ngăn chặn agent tuyên bố thành công quá sớm
 
-Bạn yêu cầu một agent thực hiện tính năng "đặt lại mật khẩu". Nó sửa đổi cấu trúc cơ sở dữ liệu, viết API endpoint, thêm mẫu email, chạy unit test (tất cả đều qua), và sau đó tự tin nói với bạn rằng "đã xong." Nhưng khi bạn thực sự thử chạy nó—liên kết đặt lại mật khẩu không thể gửi được (thiếu cấu hình dịch vụ email), quá trình di chuyển cơ sở dữ liệu bị lỗi giữa chừng (không nhất quán cấu trúc), và toàn bộ quy trình chưa được thực thi thực tế dù chỉ một lần.
+Bạn yêu cầu agent triển khai tính năng "đặt lại mật khẩu". Nó sửa schema cơ sở dữ liệu, viết API endpoint, thêm mẫu email, chạy unit test (tất cả pass) rồi đầy tự tin thông báo "xong rồi". Nhưng đến khi bạn thử chạy thật, liên kết đặt lại mật khẩu gửi không đi vì thiếu cấu hình dịch vụ email; migration cơ sở dữ liệu lỗi giữa chừng, để lại schema không nhất quán; toàn bộ luồng end-to-end chưa hề được chạy dù chỉ một lần.
 
-Cảm giác này không có gì lạ—giống như việc điền kín toàn bộ bài thi, tự tin nộp bài đầu tiên, chỉ để trượt khi có điểm. Chỉ vì bài thi được viết kín không có nghĩa là các câu trả lời đều đúng.
-
-Đây không phải là một sự cố cá biệt. Bài báo ICML kinh điển năm 2017 của Guo và cộng sự đã chứng minh: **các mạng nơ-ron hiện đại thường quá tự tin một cách có hệ thống**—độ tự tin mà các mô hình báo cáo cao hơn đáng kể so với độ chính xác thực tế của chúng. Điều này cũng đúng với các AI coding agent: chúng "cảm thấy" chúng đã xong, nhưng thực tế, chúng còn lâu mới xong. Harness của bạn phải thay thế "cảm giác" của agent bằng sự xác minh dựa trên thực thi bên ngoài.
+Đây không phải sự cố cá biệt. Bài báo ICML kinh điển năm 2017 của Guo và cộng sự đã chứng minh: **các mạng nơ-ron hiện đại tự tin thái quá một cách có hệ thống**, độ tự tin mà mô hình báo cáo cao hơn nhiều so với độ chính xác thực tế. AI coding agent cũng không ngoại lệ. Chúng "cảm thấy" xong, nhưng thực tế còn xa mới xong. Harness của bạn phải thay "cảm giác" của agent bằng sự xác minh dựa trên thực thi từ bên ngoài.
 
 ## Con dốc trơn trượt
 
-Các tuyên bố hoàn thành sớm hầu như luôn theo cùng một khuôn mẫu: mã trông có vẻ ổn—cú pháp đúng, logic có vẻ hợp lý và phân tích tĩnh không cho thấy lỗi rõ ràng. Nhưng harness không bắt buộc xác minh thực thi toàn diện, do đó agent bỏ qua việc thực sự chạy mã hoặc chỉ chạy các bài kiểm thử một phần. Nó chạy unit test nhưng bỏ qua integration test; nó chạy test nhưng không kiểm tra độ phủ (coverage). Cuối cùng, "mã trông có vẻ ổn" được coi là bằng chứng cho "tính năng đã hoàn thành." Và bài thi được nộp.
+Tuyên bố hoàn thành sớm hầu như luôn đi theo đúng một kịch bản: code trông có vẻ ổn, cú pháp đúng, logic có vẻ hợp lý, phân tích tĩnh không thấy lỗi rõ ràng. Nhưng harness không ép buộc xác minh thực thi toàn diện, nên agent bỏ qua bước thực sự chạy thử, hoặc chỉ chạy một phần test. Nó chạy unit test nhưng bỏ qua integration test; nó chạy test nhưng không kiểm tra coverage. Cuối cùng, "code trông có vẻ ổn" được coi là bằng chứng cho "tính năng đã hoàn thành".
 
-Thông tin bị mất đi ở mỗi bước. Từ thông số kỹ thuật tác vụ đến triển khai mã rồi đến hành vi runtime, mọi sự chuyển đổi đều có thể đưa vào sự sai lệch, và mỗi bước xác minh bị bỏ qua đều làm trầm trọng thêm sự bất đối xứng thông tin.
+Thông tin bị hao hụt ở mỗi bước. Từ đặc tả tác vụ sang triển khai code rồi sang hành vi runtime, mỗi lần chuyển đổi đều có thể đưa vào sai lệch, và mỗi bước xác minh bị bỏ qua lại càng khiến sự bất đối xứng thông tin trầm trọng thêm.
 
-## Kiểm tra Kết thúc Ba Lớp
+## Kiểm tra kết thúc ba lớp
 
 ```mermaid
 flowchart LR
-    Claim["Agent nói: đã xong"] --> L1["Chạy lần đầu<br/>lint / typecheck"]
-    L1 --> L2["Sau đó chạy<br/>test và kiểm tra khởi động"]
-    L2 --> L3["Cuối cùng chạy<br/>toàn bộ quy trình người dùng"]
-    L3 --> Done["Vượt qua cả ba mới là xong"]
+    Claim["Agent nói: đã xong"] --> L1["Chạy trước<br/>lint / typecheck"]
+    L1 --> L2["Rồi chạy<br/>test và kiểm tra khởi động"]
+    L2 --> L3["Cuối cùng chạy<br/>toàn bộ luồng người dùng"]
+    L3 --> Done["Qua cả ba mới tính là xong"]
 ```
 
 ```mermaid
 flowchart LR
-    A["Mã đã được viết<br/>unit test xanh"] --> B["Nhưng ứng dụng chưa thực sự khởi động<br/>quy trình đầy đủ chưa từng chạy"]
-    B --> C["Cấu hình, DB, lỗi dịch vụ ngoài<br/>tất cả vẫn bị ẩn"]
-    C --> D["Vì vậy agent tuyên bố thành công quá sớm"]
+    A["Code đã viết<br/>unit test xanh"] --> B["Nhưng ứng dụng chưa thật sự khởi động<br/>luồng đầy đủ chưa từng chạy"]
+    B --> C["Lỗi cấu hình, DB, dịch vụ ngoài<br/>đều còn ẩn"]
+    C --> D["Nên agent tuyên bố thành công quá sớm"]
 ```
 
-## Các Khái niệm Cốt lõi
+## Các khái niệm cốt lõi
 
-- **Tuyên bố Hoàn thành Sớm**: Agent khẳng định tác vụ đã hoàn thành, nhưng vẫn tồn tại các thông số kỹ thuật chưa được đáp ứng. Vấn đề cốt lõi: agent đánh giá dựa trên sự tự tin cục bộ ở cấp độ mã nguồn, trong khi tính đúng đắn ở cấp độ hệ thống đòi hỏi xác minh tổng thể.
-- **Sai lệch Hiệu chuẩn Độ Tự tin**: Khoảng cách có hệ thống giữa độ tự tin hoàn thành tự báo cáo của agent và chất lượng hoàn thành thực tế. Đối với các tác vụ đa tệp phức tạp, độ lệch này rất dương—agent luôn tự tin hơn so với khả năng thực hiện thực tế. Giống như một học sinh luôn đánh giá quá cao điểm số của mình sau kỳ thi.
-- **Tiêu chí Kết thúc**: Một tập hợp các điều kiện đánh giá rõ ràng, có thể thực thi được xác định trong harness. Agent phải thỏa mãn tất cả các điều kiện trước khi tuyên bố hoàn thành. "Đã xong" chuyển từ một đánh giá chủ quan sang một xác định khách quan.
-- **Cổng Kép Xác minh-Xác nhận (Verification-Validation)**: Lớp xác minh đầu tiên kiểm tra "mã có triển khai chính xác hành vi được chỉ định không"; lớp xác nhận thứ hai kiểm tra "hành vi cấp hệ thống có đáp ứng các yêu cầu end-to-end không". Cả hai đều phải qua để được coi là hoàn thành.
-- **Tín hiệu Phản hồi Runtime**: Nhật ký (logs), trạng thái tiến trình và kiểm tra tình trạng (health checks) từ việc thực thi chương trình. Đây là cơ sở khách quan để harness đánh giá chất lượng hoàn thành.
-- **Ràng buộc Ưu tiên Hoàn thành**: Đầu tiên xác minh tính đúng đắn của chức năng, sau đó xử lý hiệu suất, và cuối cùng giải quyết phong cách. Việc tái cấu trúc (refactoring) bị cấm cho đến khi chức năng cốt lõi được xác minh.
+- **Tuyên bố hoàn thành sớm (Premature Completion Declaration)**: Agent khẳng định tác vụ xong, nhưng vẫn còn đặc tả đúng đắn chưa được đáp ứng. Bản chất vấn đề: agent phán xét dựa trên sự tự tin cục bộ ở cấp code, trong khi tính đúng đắn ở cấp hệ thống đòi hỏi xác minh tổng thể.
+- **Sai lệch hiệu chuẩn độ tự tin (Confidence Calibration Bias)**: Khoảng cách có hệ thống giữa độ tự tin hoàn thành tự báo cáo của agent và chất lượng hoàn thành thực tế. Với tác vụ đa tệp phức tạp, sai lệch này dương rõ rệt, agent luôn tự tin hơn thực lực của mình.
+- **Tiêu chí kết thúc (Termination Criteria)**: Tập hợp điều kiện phán xét rõ ràng, có thể thực thi, do harness quy định. Agent phải thoả mãn mọi điều kiện trước khi tuyên bố hoàn thành. "Xong" chuyển từ phán đoán chủ quan sang xác định khách quan.
+- **Cổng kép xác minh - xác nhận (Verification-Validation Dual Gate)**: Lớp xác minh kiểm tra "code có triển khai đúng hành vi được chỉ định không", lớp xác nhận kiểm tra "hành vi cấp hệ thống có đáp ứng yêu cầu end-to-end không". Cả hai phải qua mới tính là hoàn thành.
+- **Tín hiệu phản hồi runtime (Runtime Feedback Signals)**: Logs, trạng thái tiến trình và health check từ quá trình thực thi chương trình. Đây là cơ sở khách quan để harness đánh giá chất lượng hoàn thành.
+- **Ràng buộc ưu tiên hoàn thành (Completion Priority Constraint)**: Xác minh tính đúng đắn của chức năng trước, xử lý hiệu năng sau, rồi mới đến phong cách. Không tái cấu trúc khi chức năng cốt lõi chưa được xác minh.
 
-## Vượt qua Unit Test ≠ Tác vụ Hoàn thành
+## Pass unit test không có nghĩa là tác vụ hoàn thành
 
-Đây là cạm bẫy phổ biến nhất và cũng nguy hiểm nhất. Agent đã viết mã, chạy unit test, tất cả đều xanh và nói "đã xong." Nhưng triết lý thiết kế của unit test—cô lập đơn vị được kiểm tra và giả lập (mocking) các phụ thuộc—chính xác là điều làm cho chúng không có khả năng phát hiện các vấn đề xuyên thành phần:
+Đây là cạm bẫy phổ biến nhất và cũng nguy hiểm nhất. Agent viết code, chạy unit test, tất cả xanh, rồi nói "xong". Nhưng triết lý thiết kế của unit test, cô lập đơn vị cần kiểm tra và mock các phụ thuộc, chính là điều khiến chúng không có khả năng phát hiện vấn đề xuyên thành phần:
 
-**Không khớp Giao diện (Interface Mismatch)**: Đường dẫn tệp được chuyển bởi quá trình render cho preload script là đường dẫn tương đối, nhưng preload script mong đợi đường dẫn tuyệt đối. Cả hai bài kiểm tra đơn vị tương ứng của chúng đều sử dụng mock và đã vượt qua. Vấn đề chỉ được phát hiện trong quá trình kiểm tra end-to-end. Giống như mỗi nhạc công trong một ban nhạc thực hành hoàn hảo khi chơi một mình, nhưng lại nhận ra họ đang chơi ở các tông khác nhau khi chơi cùng nhau.
+**Không khớp giao diện (Interface Mismatch)**: Renderer truyền một đường dẫn tương đối cho preload script, nhưng preload script kỳ vọng đường dẫn tuyệt đối. Unit test của mỗi bên đều dùng mock và đều pass. Vấn đề chỉ lộ ra khi chạy end-to-end.
 
-**Lỗi Truyền Trạng thái (State Propagation Errors)**: Một quá trình migration cơ sở dữ liệu thay đổi cấu trúc bảng, nhưng lớp bộ nhớ cache ORM vẫn giữ các mục cache cho cấu trúc cũ. Unit test cung cấp một môi trường mock mới mỗi lần, điều này sẽ không để lộ sự không nhất quán trạng thái xuyên lớp này.
+**Lỗi lan truyền trạng thái (State Propagation Errors)**: Một migration cơ sở dữ liệu thay đổi schema bảng, nhưng lớp cache của ORM vẫn giữ các mục cache cho schema cũ. Unit test mỗi lần chạy trong môi trường mock mới, nên kiểu không nhất quán trạng thái xuyên lớp này không bao giờ lộ ra.
 
-**Phụ thuộc Môi trường (Environment Dependency)**: Mã hoạt động chính xác trong môi trường test (nơi mọi thứ được mock) nhưng thất bại trong môi trường thực do sự khác biệt về cấu hình, độ trễ mạng hoặc dịch vụ không khả dụng. Giống như hát hoàn hảo trong phòng tập, nhưng gặp sự cố thiết bị âm thanh trên sân khấu.
+**Phụ thuộc môi trường (Environment Dependency)**: Code chạy đúng trong môi trường test (mọi thứ đều được mock) nhưng hỏng trong môi trường thật vì khác biệt cấu hình, độ trễ mạng hoặc dịch vụ không khả dụng.
 
-### "Nhân tiện Tái cấu trúc luôn" là Thuốc độc đối với việc Đánh giá Hoàn thành
+### "Tiện thể tái cấu trúc luôn" là thuốc độc với phán đoán hoàn thành
 
-Claude Code có một kiểu hành vi phổ biến: nó bắt đầu tái cấu trúc mã, tối ưu hóa hiệu suất và cải thiện phong cách trước khi chức năng cốt lõi vượt qua xác minh. Câu nói của Knuth, "Tối ưu hóa sớm là nguồn gốc của mọi tội lỗi," có một ý nghĩa mới trong kịch bản agent—việc tái cấu trúc làm thay đổi ranh giới giữa mã đã được xác minh và chưa được xác minh, có khả năng phá vỡ các luồng mã trước đó đã ngầm định là đúng. Giống như việc bạn chép lại các câu trả lời trắc nghiệm của mình để có định dạng đẹp hơn trước khi bạn hoàn thành các câu hỏi tự luận toán—không chỉ lãng phí thời gian mà bạn còn có thể chép sai.
+Claude Code có một kiểu hành vi khá phổ biến: nó bắt đầu tái cấu trúc code, tối ưu hiệu năng và cải thiện phong cách trước khi chức năng cốt lõi qua được xác minh. Câu nói "tối ưu sớm là nguồn gốc của mọi tội lỗi" của Knuth mang một ý nghĩa mới trong kịch bản agent, tái cấu trúc làm thay đổi ranh giới giữa phần code đã xác minh và chưa xác minh, có nguy cơ phá vỡ những đường đi trước đó vốn ngầm đúng.
 
-### Sự Sai lệch có Hệ thống trong Tự đánh giá
+### Sai lệch có hệ thống trong tự đánh giá
 
-Anthropic đã phát hiện ra một mô hình lỗi sâu sắc hơn trong nghiên cứu năm 2026 của họ: **khi một agent được yêu cầu đánh giá công việc của chính nó, nó sẽ đưa ra các đánh giá quá tích cực một cách có hệ thống—ngay cả khi một người quan sát con người sẽ coi chất lượng rõ ràng là dưới tiêu chuẩn.** Điều này giống như yêu cầu một học sinh tự chấm điểm bài thi của mình—họ sẽ luôn đặc biệt khoan dung với câu trả lời của chính họ.
+Nghiên cứu năm 2026 của Anthropic phát hiện một mô hình thất bại sâu hơn: **khi một agent được yêu cầu tự đánh giá công việc của chính nó, nó sẽ đưa ra phán đoán tích cực thái quá một cách có hệ thống, ngay cả khi một người quan sát bình thường đánh giá chất lượng rõ ràng là dưới chuẩn.**
 
-Vấn đề này đặc biệt nghiêm trọng trong các tác vụ mang tính chủ quan (chẳng hạn như thẩm mỹ thiết kế)—việc liệu một "bố cục có tinh tế hay không" là một cuộc gọi phán đoán, và agent có xu hướng đáng tin cậy về phía tích cực. Ngay cả đối với các tác vụ có thể xác minh kết quả, hiệu suất của agent cũng có thể bị cản trở bởi khả năng phán đoán kém.
+Vấn đề này đặc biệt nghiêm trọng với tác vụ mang tính chủ quan (ví dụ thẩm mỹ thiết kế). "Bố cục có tinh tế hay không" là một phán đoán, và agent luôn nghiêng rõ rệt về phía tích cực. Ngay cả với tác vụ có thể kiểm chứng kết quả, khả năng phán đoán kém của agent cũng kéo hiệu quả xuống.
 
-Giải pháp không phải là làm cho agent "khách quan hơn"—cùng một mô hình tạo ra và đánh giá vốn có xu hướng hào phóng với chính nó. **Giải pháp là tách "người làm" khỏi "người kiểm tra".** Giống như một học sinh không nên tự chấm bài thi của mình—bạn cần một người chấm điểm độc lập.
+Giải pháp không phải làm cho agent "khách quan hơn", cùng một mô hình vừa tạo vừa đánh giá, vốn luôn có xu hướng hào phóng với chính mình. **Giải pháp là tách "người làm" ra khỏi "người kiểm".**
 
-Một agent đánh giá độc lập, được tinh chỉnh đặc biệt để "kén chọn", hiệu quả hơn nhiều so với việc để agent tạo tự đánh giá. Dữ liệu thực nghiệm từ Anthropic:
+Một agent đánh giá độc lập, được tinh chỉnh để cố tình "kén chọn", hiệu quả hơn nhiều so với việc để agent tạo tự đánh giá. Dữ liệu thực nghiệm từ Anthropic:
 
-| Kiến trúc | Thời gian chạy | Chi phí | Chức năng Cốt lõi Hoạt động? |
+| Kiến trúc | Thời gian chạy | Chi phí | Tính năng cốt lõi chạy được không? |
 |--------------|---------|------|------------------------|
-| Agent Đơn lẻ (chạy trần) | 20 phút | $9 | Không (các thực thể trò chơi không phản hồi với đầu vào) |
-| Ba Agent (planner + generator + evaluator) | 6 giờ | $200 | Có (trò chơi có thể chơi hoàn toàn) |
+| Một agent (chạy trần) | 20 phút | $9 | Không (các thực thể trong trò chơi không phản hồi input) |
+| Ba agent (planner + generator + evaluator) | 6 giờ | $200 | Có (trò chơi chơi được hoàn toàn) |
 
-Đây là cùng một mô hình (Opus 4.5) với cùng một prompt ("xây dựng một trình chỉnh sửa trò chơi retro 2D"). Sự khác biệt duy nhất là harness—từ "chạy trần" đến "planner mở rộng yêu cầu → generator thực hiện từng tính năng → evaluator thực hiện kiểm tra nhấp chuột thực tế bằng Playwright".
+Đây là cùng một mô hình (Opus 4.5) với cùng một prompt ("xây dựng trình tạo trò chơi retro 2D"). Điểm khác biệt duy nhất nằm ở harness: từ "chạy trần" sang "planner mở rộng yêu cầu, generator triển khai từng tính năng, evaluator thực sự bấm thử bằng Playwright".
 
 > Nguồn: [Anthropic: Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps)
 
-## Cách Ngăn chặn Việc Nộp bài Sớm
+## Cách ngăn chặn tuyên bố thành công sớm
 
-### 1. Ngoại hóa việc Đánh giá Kết thúc
+### 1. Đưa phán đoán kết thúc ra ngoài agent
 
-Việc đánh giá hoàn thành không nên do chính agent thực hiện. Harness phải thực hiện xác nhận kết thúc một cách độc lập, sử dụng các tín hiệu runtime làm đầu vào chứ không phải sự tự tin của agent. Viết rõ điều này trong `CLAUDE.md`:
+Phán đoán hoàn thành không nên do chính agent đưa ra. Harness độc lập thực thi xác nhận kết thúc, dùng tín hiệu runtime làm đầu vào thay vì độ tự tin của agent. Trong `CLAUDE.md`, bạn có thể ghi rõ:
 
 ```
-## Định nghĩa Hoàn thành (Definition of Done)
-- Tính năng hoàn thành = xác minh end-to-end đã qua, không phải "mã đã được viết"
-- Các cấp độ xác minh bắt buộc:
+## Định nghĩa hoàn thành
+- Tính năng hoàn thành = xác minh end-to-end đã qua, không phải "code đã viết"
+- Các cấp xác minh bắt buộc:
   1. Unit tests pass
   2. Integration tests pass
   3. End-to-end flow verification passes
-- Không chuyển sang cấp độ 2 nếu cấp độ 1 thất bại
-- Không chuyển sang cấp độ 3 nếu cấp độ 2 thất bại
+- Không chuyển sang cấp 2 nếu cấp 1 fail
+- Không chuyển sang cấp 3 nếu cấp 2 fail
 ```
 
-### 2. Xây dựng Xác nhận Kết thúc Ba Lớp
+### 2. Xây dựng xác nhận kết thúc ba lớp
 
-- **Lớp 1: Cú pháp và Phân tích Tĩnh**. Chi phí thấp nhất, ít thông tin nhất, nhưng phải vượt qua. Đây là mức kiểm tra tối thiểu—bạn phải đánh vần đúng các từ trước khi chúng ta xem xét bất cứ thứ gì khác.
-- **Lớp 2: Xác minh Hành vi Runtime**. Thực thi test, kiểm tra khởi động ứng dụng, xác nhận đường dẫn quan trọng. Đây là bằng chứng cốt lõi của sự hoàn thành. Chỉ viết ra thôi là chưa đủ; nó phải chạy được.
-- **Lớp 3: Xác nhận Cấp Hệ thống**. Kiểm thử end-to-end, xác nhận tích hợp, mô phỏng kịch bản người dùng. Tuyến phòng thủ cuối cùng chống lại các tuyên bố sớm. Nó không chỉ phải chạy; nó phải chạy chính xác.
+- **Lớp 1: Cú pháp và phân tích tĩnh**. Chi phí thấp nhất, ít thông tin nhất, nhưng phải pass. Đây là mức tối thiểu, bạn phải đánh vần đúng từ ngữ trước khi xét tiếp.
+- **Lớp 2: Xác minh hành vi runtime**. Thực thi test, kiểm tra khởi động ứng dụng, xác nhận các đường đi quan trọng. Đây là bằng chứng cốt lõi của việc hoàn thành, không chỉ viết ra, mà còn phải chạy được.
+- **Lớp 3: Xác nhận cấp hệ thống**. Kiểm thử end-to-end, xác nhận tích hợp, mô phỏng kịch bản người dùng. Tuyến phòng thủ cuối cùng chống lại tuyên bố sớm, không chỉ chạy được, mà còn phải chạy đúng.
 
-### 3. Thiết kế "Bút đỏ Đánh dấu" Tốt cho Agents
+### 3. Thiết kế thông báo lỗi có kèm hướng dẫn sửa cho agent
 
-OpenAI đã giới thiệu một mẫu đặc biệt hiệu quả trong quá trình thực hành Codex của họ: **các thông báo lỗi cho agent phải bao gồm các hướng dẫn sửa chữa**. Đừng chỉ vẽ một dấu chéo đỏ lớn như một người chấm điểm lười biếng; hãy giống như một giáo viên giỏi và viết "đây là cách bạn nên thay đổi điều này" ở lề. Đừng sử dụng `"Test failed"`, mà hãy sử dụng `"Test failed: POST /api/reset-password returned 500. Check that the email service config exists in environment variables. The template file should be at templates/reset-email.html."` Phản hồi cụ thể, có thể hành động này cho phép agent tự sửa lỗi mà không cần sự can thiệp của con người.
+OpenAI giới thiệu một mẫu đặc biệt hiệu quả trong thực hành Codex: **thông báo lỗi viết cho agent phải kèm hướng dẫn sửa chữa.** Đừng chỉ nói "sai rồi", hãy chỉ rõ sai ở đâu và sửa thế nào. Đừng dùng `"Test failed"`, hãy dùng `"Test failed: POST /api/reset-password returned 500. Check that the email service config exists in environment variables. The template file should be at templates/reset-email.html."` Phản hồi cụ thể, có thể hành động được như thế giúp agent tự sửa mà không cần con người can thiệp.
 
-### 4. Nắm bắt các Tín hiệu Runtime
+### 4. Thu thập tín hiệu runtime
 
-Các tín hiệu runtime hiệu quả bao gồm:
-- Ứng dụng có khởi động thành công và đạt đến trạng thái sẵn sàng không?
-- Các đường dẫn tính năng quan trọng có thực thi thành công trong runtime không?
-- Các thao tác ghi cơ sở dữ liệu, hoạt động tệp và các hiệu ứng phụ khác có chính xác không?
-- Các tài nguyên tạm thời có được dọn dẹp không?
+Các tín hiệu runtime hiệu quả gồm:
+- Ứng dụng có khởi động thành công và đạt trạng thái sẵn sàng không?
+- Các đường đi tính năng quan trọng có thực thi thành công ở runtime không?
+- Thao tác ghi cơ sở dữ liệu, thao tác tệp và các side effect khác có đúng không?
+- Tài nguyên tạm có được dọn dẹp không?
 
-## Trường hợp Thực tế
+## Câu chuyện thật
 
-**Tác vụ**: Triển khai chức năng đặt lại mật khẩu người dùng. Bao gồm hoạt động cơ sở dữ liệu, gửi email và sửa đổi API endpoint.
+**Tác vụ**: Triển khai chức năng đặt lại mật khẩu người dùng. Liên quan đến thao tác cơ sở dữ liệu, gửi email và sửa API endpoint.
 
-**Đường dẫn nộp bài sớm**: Agent sửa đổi cấu trúc cơ sở dữ liệu, viết API endpoint, thêm mẫu email, chạy unit test (qua) và tuyên bố hoàn thành. Bài kiểm tra đã được điền đầy đủ.
+**Con đường nộp sớm**: Agent sửa schema cơ sở dữ liệu, viết API endpoint, thêm mẫu email, chạy unit test (pass) và tuyên bố hoàn thành. Trông như thể rất nhiều thứ đã được làm, nhưng các bước then chốt đều bị bỏ qua.
 
-**Các điểm trừ thực tế**: (1) Luồng end-to-end chưa được kiểm tra—việc gửi và xác minh thực tế liên kết đặt lại chưa bao giờ được xác nhận. (2) Quá trình migration cơ sở dữ liệu thất bại sau khi thực thi một phần, gây ra sự không nhất quán cấu trúc. (3) Cấu hình dịch vụ email bị thiếu trong môi trường đích.
+**Những điểm bị bỏ sót thật sự**: (1) Luồng end-to-end chưa từng được kiểm tra, việc gửi và xác minh thật sự liên kết đặt lại chưa bao giờ được xác nhận. (2) Migration cơ sở dữ liệu lỗi sau khi thực thi một phần, để lại schema không nhất quán. (3) Cấu hình dịch vụ email bị thiếu trong môi trường đích.
 
-**Sự can thiệp của Harness**: Xác nhận kết thúc bị bắt buộc—(1) Khởi động toàn bộ ứng dụng để xác minh khả năng truy cập endpoint đặt lại; (2) Thực thi toàn bộ quy trình đặt lại; (3) Xác minh tính nhất quán của trạng thái cơ sở dữ liệu. Tất cả các khiếm khuyết đã được tìm thấy trong phiên, tiết kiệm 5-10 lần chi phí của các bản sửa lỗi sau này. Người chấm điểm độc lập đã tìm ra các vấn đề thực sự.
+**Harness can thiệp**: Xác nhận kết thúc được thực thi, (1) khởi động toàn bộ ứng dụng để xác minh endpoint đặt lại truy cập được; (2) chạy toàn bộ luồng đặt lại; (3) xác minh tính nhất quán trạng thái cơ sở dữ liệu. Mọi khiếm khuyết đều được phát hiện trong phiên, tiết kiệm chi phí sửa sau gấp 5-10 lần.
 
-## Những Điểm chính cần Nhớ
+## Những điểm chính cần nhớ
 
-- **Các Agent thường quá tự tin một cách có hệ thống**—sai lệch hiệu chuẩn độ tự tin là một thực tế khách quan. Điền kín bài kiểm tra không có nghĩa là bạn đã làm đúng.
-- **Đánh giá hoàn thành phải được ngoại hóa**—harness tự xác minh một cách độc lập; đừng tin vào "cảm giác" của agent. Học sinh không thể tự chấm bài thi của mình.
-- **Cả ba lớp xác nhận đều rất cần thiết**—qua được cú pháp, qua được hành vi, qua được hệ thống, tiến triển từng lớp một.
-- **Các thông báo lỗi nên giống như việc dùng bút đỏ đánh dấu của một giáo viên giỏi**—bao gồm các bước sửa chữa cụ thể để agent có thể tự sửa đổi.
-- **Không tái cấu trúc (refactoring) cho đến khi chức năng cốt lõi được xác minh**—ràng buộc ưu tiên hoàn thành là chìa khóa để ngăn chặn tối ưu hóa sớm.
+- **Agent tự tin thái quá một cách có hệ thống**, sai lệch hiệu chuẩn độ tự tin là thực tế khách quan. Code được viết ra không có nghĩa là viết đúng.
+- **Phán đoán hoàn thành phải được đưa ra ngoài**, harness tự xác minh độc lập. Đừng tin "cảm giác" của agent.
+- **Cả ba lớp xác nhận đều cần thiết**: cú pháp pass, hành vi pass, hệ thống pass, tiến từng lớp một, không cắt tắt.
+- **Thông báo lỗi nên bao gồm bước sửa cụ thể**, giúp agent tự điều chỉnh thay vì chỉ biết "sai rồi".
+- **Không tái cấu trúc khi chức năng cốt lõi chưa được xác minh**, ràng buộc ưu tiên hoàn thành chính là chìa khoá ngăn chặn tối ưu hoá sớm.
 
 ## Đọc thêm
 
-- [On Calibration of Modern Neural Networks - Guo et al.](https://arxiv.org/abs/1706.04599) — Chứng minh các mạng sâu hiện đại thường quá tự tin một cách có hệ thống
-- [Building Effective Agents - Anthropic](https://www.anthropic.com/research/building-effective-agents) — Vai trò quan trọng của bằng chứng runtime trong việc đánh giá hoàn thành
-- [Harness Engineering - OpenAI](https://openai.com/index/harness-engineering/) — Tuyên bố hoàn thành sớm là một trong những chế độ lỗi chính của các agent
-- [The Art of Software Testing - Myers](https://www.goodreads.com/book/show/137543.The_Art_of_Software_Testing) — Tài liệu tham khảo kinh điển về phân cấp và hiệu quả của phương pháp kiểm thử
+- [On Calibration of Modern Neural Networks - Guo et al.](https://arxiv.org/abs/1706.04599) — Chứng minh các mạng sâu hiện đại tự tin thái quá có hệ thống
+- [Building Effective Agents - Anthropic](https://www.anthropic.com/research/building-effective-agents) — Vai trò cốt lõi của bằng chứng runtime trong phán đoán hoàn thành
+- [Harness Engineering - OpenAI](https://openai.com/index/harness-engineering/) — Tuyên bố hoàn thành sớm là một trong các chế độ thất bại chính của agent
+- [The Art of Software Testing - Myers](https://www.goodreads.com/book/show/137543.The_Art_of_Software_Testing) — Tài liệu kinh điển về phân cấp và hiệu quả phương pháp kiểm thử
 
 ## Bài tập
 
-1. **Thiết kế Hàm Xác nhận Kết thúc**: Thiết kế một quy trình xác nhận kết thúc hoàn chỉnh cho một tác vụ liên quan đến việc di chuyển cơ sở dữ liệu và sửa đổi API. Liệt kê các tín hiệu runtime cần thiết và các tiêu chí đạt/trượt (pass/fail) cho từng tín hiệu. Chạy nó trên một tác vụ thực tế và ghi lại những vấn đề tiềm ẩn mà nó tìm thấy.
+1. **Thiết kế quy trình xác nhận kết thúc**: Thiết kế một quy trình xác nhận kết thúc hoàn chỉnh cho tác vụ liên quan đến migration cơ sở dữ liệu và sửa API. Liệt kê các tín hiệu runtime cần thiết và tiêu chí pass/fail cho từng tín hiệu. Chạy trên một tác vụ thật và ghi lại những vấn đề ẩn mà nó phát hiện.
 
-2. **Đo lường Sai lệch Hiệu chuẩn**: Chọn 10 loại tác vụ lập trình khác nhau và ghi lại độ tự tin hoàn thành tự báo cáo của agent so với chất lượng hoàn thành thực tế. Tính toán giá trị sai lệch và phân tích mối quan hệ của nó với độ phức tạp của tác vụ.
+2. **Đo lường sai lệch hiệu chuẩn**: Chọn 10 tác vụ lập trình thuộc các loại khác nhau. Ghi lại độ tự tin hoàn thành tự báo cáo của agent cùng chất lượng hoàn thành thực tế. Tính sai lệch và phân tích mối liên hệ với độ phức tạp của tác vụ.
 
-3. **Thử nghiệm Phòng thủ Đa Lớp**: Chạy ba cấu hình trên cùng một bộ tác vụ—(a) chỉ phân tích tĩnh, (b) thêm unit testing, (c) xác nhận đầy đủ ba lớp. So sánh tỷ lệ các tuyên bố hoàn thành sớm và số lượng các khiếm khuyết không bị phát hiện.
+3. **Thí nghiệm phòng thủ đa lớp**: Chạy ba cấu hình trên cùng bộ tác vụ: (a) chỉ phân tích tĩnh, (b) thêm unit testing, (c) xác nhận đầy đủ ba lớp. So sánh tỷ lệ tuyên bố hoàn thành sớm và số khiếm khuyết không bị phát hiện.

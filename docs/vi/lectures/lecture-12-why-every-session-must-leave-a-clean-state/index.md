@@ -1,186 +1,196 @@
 [English Version →](../../../en/lectures/lecture-12-why-every-session-must-leave-a-clean-state/) | [中文版本 →](../../../zh/lectures/lecture-12-why-every-session-must-leave-a-clean-state/)
 
-> Ví dụ mã nguồn: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-12-why-every-session-must-leave-a-clean-state/code/)
+> Ví dụ code: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-12-why-every-session-must-leave-a-clean-state/code/)
 > Dự án thực hành: [Dự án 06. Harness Đầy đủ (Capstone)](./../../projects/project-06-runtime-observability-and-debugging/index.md)
 
-# Bài 12. Bàn giao Sạch Sẽ ở Cuối Mỗi Phiên
+# Bài 12. Bàn giao sạch ở cuối mỗi phiên
 
-## Bài giảng này Giải quyết Vấn đề Gì?
+Agent của bạn chạy cả buổi chiều, sửa 20 tệp, commit code, rồi phiên kết thúc. Phiên agent tiếp theo vừa mở ra đã phát hiện ngay: build hỏng, test đang đỏ, các tệp debug tạm rải rác khắp nơi, feature list chưa cập nhật, và tiến độ hoàn toàn mù mờ. 30 phút đầu của phiên mới chỉ để dò xem "phiên trước thật sự đã làm gì".
 
-Agent của bạn chạy cả buổi chiều, sửa đổi 20 tệp, commit mã, phiên kết thúc. Phiên agent tiếp theo bắt đầu và ngay lập tức phát hiện: build bị hỏng, test đang đỏ, các tệp debug tạm thời ở khắp nơi, feature list không được cập nhật, và tiến độ hoàn toàn không rõ ràng. Phiên mới dành 30 phút đầu tiên chỉ để tìm hiểu "phiên cuối thực sự đã làm gì."
+Cả OpenAI và Anthropic đều phát biểu rõ: **độ tin cậy dài hạn phụ thuộc vào kỷ luật vận hành, không chỉ thành công một lần chạy.** Chất lượng trạng thái khi thoát phiên trực tiếp quyết định hiệu quả của phiên kế tiếp. Cũng giống như thực hành tốt với Git vậy, mỗi commit nên là một thay đổi nguyên tử, build được, chứ không phải đống code làm dở.
 
-Cả OpenAI và Anthropic đều nói rõ ràng: **độ tin cậy dài hạn phụ thuộc vào kỷ luật vận hành, không chỉ là thành công một lần chạy.** Chất lượng trạng thái khi thoát phiên trực tiếp xác định hiệu quả của phiên tiếp theo. Hãy nghĩ về nó giống như các thực hành tốt nhất của Git — mỗi commit nên là một thay đổi nguyên tử, có thể biên dịch, không phải một đống mã làm dở.
+## Tăng trưởng entropy là trạng thái mặc định
 
-## Các Khái niệm Cốt lõi
+Các định luật tiến hoá phần mềm của Lehman cho thấy hệ thống trải qua thay đổi liên tục sẽ tất yếu phức tạp thêm nếu không được quản lý chủ động. Với AI coding agent, chuyện này càng đúng. Mỗi phiên đưa vào thay đổi, nếu không dọn khi thoát, nợ kỹ thuật sẽ tích tụ theo cấp số nhân.
 
-- **Trạng thái sạch (Clean state)**: Hệ thống thỏa mãn năm điều kiện khi thoát phiên — build vượt qua, test vượt qua, tiến độ được ghi lại, không có artifact lỗi thời, đường dẫn khởi động khả dụng. Thiếu bất kỳ cái nào có nghĩa là phiên không "xong."
-- **Tính toàn vẹn phiên (Session Integrity)**: Tương tự như giao dịch cơ sở dữ liệu — hoặc commit đầy đủ và để lại trạng thái sạch, hoặc rollback về trạng thái nhất quán cuối cùng. Không có lựa chọn trung gian.
-- **Tài liệu chất lượng (Quality Document)**: Một artifact đang hoạt động liên tục ghi lại xếp loại chất lượng cho mỗi module. Không phải đánh giá một lần, mà là tracker cho thấy liệu codebase có đang trở nên mạnh hơn hay yếu hơn theo thời gian.
-- **Vòng lặp dọn dẹp (Cleanup Loop)**: Một phiên bảo trì thường xuyên nhằm giảm entropy có hệ thống trong codebase. Không phải sửa chữa khẩn cấp, mà là vận hành thường xuyên.
-- **Đơn giản hóa harness (Harness Simplification)**: Khi năng lực mô hình cải thiện, định kỳ xóa các thành phần harness không còn cần thiết. Một ràng buộc cần thiết ngày hôm nay có thể là overhead không cần thiết ba tháng sau.
-- **Dọn dẹp Idempotent**: Các hoạt động dọn dẹp tạo ra cùng kết quả bất kể chúng chạy bao nhiêu lần. Đảm bảo dọn dẹp vẫn an toàn ngay cả trong các kịch bản thất bại-thử lại.
+Trong năm tháng thí nghiệm Codex, OpenAI quan sát thấy một điều đáng chú ý: **agent sao chép các pattern đang có trong kho lưu trữ, ngay cả khi những pattern ấy không nhất quán hoặc chưa tối ưu.** Lâu dần, việc sao chép này tất yếu dẫn đến trôi dạt. Người đầu tiên để lại một cái cốc cà phê ở khu vực chung; người thứ hai thấy "chỗ này đã lộn xộn rồi" và cũng để thêm một cái; một tuần sau, cả mặt bàn chìm trong cốc. Một codebase cũng vận hành y hệt thế.
 
-## Năm Chiều của Trạng thái Sạch
+Đội ngũ OpenAI ban đầu dành 20% thời gian mỗi thứ Sáu để dọn thủ công "rác do AI", nhưng cách này rõ ràng không mở rộng được. Cuối cùng họ đi đến một giải pháp có hệ thống:
+
+1. **Mã hoá "quy tắc vàng" vào kho lưu trữ**: Các quy tắc kiểu "ưu tiên dùng package tiện ích dùng chung thay vì helper tự chế tay" (giữ bất biến ở một nơi) và "đừng đoán mò cấu trúc dữ liệu" (xác minh ranh giới hoặc dựa vào SDK có kiểu). Những quy tắc này cụ thể, cơ học và kiểm tra được tự động.
+2. **Thiết lập quy trình dọn dẹp định kỳ**: Một đội các task Codex nền thường xuyên quét tìm sai lệch, cập nhật điểm chất lượng, mở PR tái cấu trúc có mục tiêu. Phần lớn có thể review và auto-merge trong vòng một phút.
+3. **Ghi lại khẩu vị người dùng một lần, thực thi liên tục**: Nhận xét review, PR tái cấu trúc, và lỗi người dùng thấy được đều được dịch thành cập nhật tài liệu hoặc mã hoá thẳng vào công cụ. Khi tài liệu chưa đủ, hãy thăng cấp quy tắc thành code.
+
+Nợ kỹ thuật là khoản vay lãi cao. Trả dần dần từng phần nhỏ bao giờ cũng tốt hơn để nó dồn lại thành một sự kiện trả nợ lớn.
+
+> Nguồn: [OpenAI: Harness engineering: leveraging Codex in an agent-first world](https://openai.com/index/harness-engineering/)
+
+## Trạng thái sạch không chỉ là "code build được"
+
+Trạng thái sạch không đơn giản là "code build được". Build không lỗi là yêu cầu cơ bản nhất, phiên sau không nên phải sửa build lỗi trước. Tất cả test cũng phải pass, kể cả những test đã có trước phiên, phiên chịu trách nhiệm không phá vỡ chức năng hiện có. Và chuyện này phải được xác minh trong CI, không chỉ "chạy ổn trên máy tôi".
 
 ```mermaid
 flowchart LR
-    Work["Công việc tính năng hoàn thành"] --> Build{"Build vượt qua?"}
-    Build -->|có| Test{"Test vượt qua?"}
+    Work["Phần việc tính năng xong"] --> Build{"Build pass?"}
+    Build -->|có| Test{"Test pass?"}
     Build -->|không| Fix["Sửa trước khi thoát"]
     Test -->|có| Record["Cập nhật feature list + tiến độ"]
     Test -->|không| Fix
-    Record --> Cleanup["Xóa artifact tạm thời / mã debug"]
-    Cleanup --> Startup{"Đường dẫn khởi động chuẩn hoạt động?"}
-    Startup -->|có| Clean["Bàn giao sạch sẽ"]
+    Record --> Cleanup["Xóa artifact tạm / code debug"]
+    Cleanup --> Startup{"Đường khởi động chuẩn chạy được?"}
+    Startup -->|có| Clean["Bàn giao sạch"]
     Startup -->|không| Fix
     Fix --> Build
 ```
 
+Nhưng thế vẫn chưa đủ. Tiến độ hiện tại phải được ghi vào artifact máy đọc được: các subtask đã hoàn thành kèm tiêu chí pass, các subtask đang làm dở kèm trạng thái hiện tại, các subtask chưa bắt đầu. Bản ghi tiến độ tốt giảm thời gian chẩn đoán lúc khởi động phiên từ 60-80%. Artifact tạm (debug log, tệp tạm, code bị comment out, marker TODO) cũng phải được dọn, vì chúng tăng tải nhận thức cho phiên sau. Đường khởi động chuẩn phải còn chạy được. Phiên sau có thể bắt đầu làm việc mà không cần can thiệp thủ công không? Khởi tạo môi trường, tải codebase, thu thập ngữ cảnh, chọn tác vụ, không đường nào được hỏng cả.
+
 ```mermaid
 flowchart LR
-    Dirty["Phiên kết thúc với<br/>test đỏ / tệp tạm / không cập nhật tiến độ"] --> Diagnose["Phiên tiếp theo đầu tiên phải<br/>tìm hiểu chuyện gì đã xảy ra"]
-    Diagnose --> Fragile["Công việc mới bắt đầu trên repo lộn xộn"]
-    Fragile --> More["Thêm tệp debug, thêm kiểm tra hỏng,<br/>thêm tiến độ không rõ ràng"]
+    Dirty["Phiên kết thúc với<br/>test đỏ / tệp tạm / không cập nhật tiến độ"] --> Diagnose["Phiên sau đầu tiên phải<br/>dò xem chuyện gì đã xảy ra"]
+    Diagnose --> Fragile["Rồi tiếp tục sửa<br/>trên một repo đã lộn xộn"]
+    Fragile --> More["Thêm tệp debug, thêm check hỏng,<br/>thêm tiến độ mù mờ"]
     More --> Dirty
 
-    Clean["Phiên kết thúc với<br/>test xanh / tiến độ cập nhật / tệp tạm đã xóa"] --> Fast["Phiên tiếp theo có thể bắt đầu lập trình ngay"]
-    Fast --> Stable["Không cần cứu repo trước"]
+    Clean["Phiên kết thúc với<br/>test xanh / tiến độ cập nhật / tệp tạm đã xóa"] --> Fast["Phiên sau mở repo<br/>là code tiếp được luôn"]
+    Fast --> Stable["Không phải dập lửa trước"]
     Stable --> Clean
 ```
 
-## Tại sao Điều này Xảy ra
+## Các khái niệm cốt lõi
 
-### Tăng trưởng Entropy là Trạng thái Mặc định
+- **Trạng thái sạch (Clean state)**: Hệ thống phải thoả mãn năm điều kiện khi thoát phiên, build pass, test pass, tiến độ đã ghi, không có artifact cũ, đường khởi động khả dụng. Thiếu một cái là phiên chưa "xong".
+- **Tính toàn vẹn phiên (Session integrity)**: Tương tự giao dịch cơ sở dữ liệu, hoặc commit đầy đủ và để lại trạng thái sạch, hoặc rollback về trạng thái nhất quán gần nhất. Không có lựa chọn giữa.
+- **Tài liệu chất lượng (Quality document)**: Một artifact sống liên tục ghi điểm chất lượng cho từng module. Không phải đánh giá một lần, mà là tracker cho thấy codebase đang mạnh lên hay yếu đi theo thời gian.
+- **Vòng lặp dọn dẹp (Cleanup loop)**: Phiên bảo trì định kỳ nhằm giảm entropy trong codebase một cách có hệ thống. Không phải sửa chữa khẩn cấp, mà là vận hành thường ngày.
+- **Đơn giản hoá harness (Harness simplification)**: Khi năng lực mô hình cải thiện, định kỳ gỡ bỏ các thành phần harness không còn cần thiết. Một ràng buộc cần thiết hôm nay có thể thành overhead thừa ba tháng sau.
+- **Dọn dẹp idempotent (Idempotent cleanup)**: Thao tác dọn dẹp cho cùng kết quả bất kể chạy bao nhiêu lần, đảm bảo dọn vẫn an toàn ngay cả trong kịch bản fail-retry.
 
-Các quy luật tiến hóa phần mềm của Lehman cho chúng ta biết: các hệ thống trải qua thay đổi liên tục sẽ không thể tránh khỏi tăng độ phức tạp trừ khi được quản lý chủ động. Điều này đặc biệt đúng với AI coding agent — mỗi phiên giới thiệu các thay đổi, và nếu không dọn dẹp khi thoát, nợ kỹ thuật tích lũy theo cấp số nhân.
+## "Dọn sau" nghĩa là không bao giờ dọn
 
-Dữ liệu thực tế rất rõ ràng. Một dự án được phát triển với agent trong 12 tuần, không có chiến lược dọn dẹp:
+Cái bẫy tâm lý phổ biến nhất là "phiên này không có thời gian dọn, để lần sau". Nhưng phiên agent sau không biết bạn đã để lại gì, nó chỉ thấy một đống code và trạng thái không rõ ràng. Nó sẽ tốn kha khá thời gian suy ra "phần nào của đống code này là cố ý, phần nào là tạm".
 
-- Tuần 1: Tỷ lệ vượt qua build 100%, tỷ lệ vượt qua test 100%, khởi động phiên mới 5 phút
-- Tuần 4: Build 95%, test 92%, khởi động 15 phút
-- Tuần 8: Build 82%, test 78%, khởi động 35 phút
-- Tuần 12: Build 68%, test 61%, khởi động 60+ phút
+Tệ hơn, mỗi phiên có mục tiêu tác vụ riêng. Phiên mới vào để làm việc mới, không phải dọn mớ hỗn độn của phiên trước. Nó sẽ phớt lờ sự lộn xộn rồi xây tiếp lên trên, lại đẻ thêm hỗn loạn. Đó chính là vòng phản hồi dương của entropy.
 
-Cùng dự án với chiến lược dọn dẹp:
+Con số kể lại tất cả. Một dự án phát triển bằng agent trong 12 tuần, không có chiến lược dọn dẹp:
+
+- Tuần 1: build pass 100%, test pass 100%, khởi động phiên mới 5 phút
+- Tuần 4: build 95%, test 92%, khởi động 15 phút
+- Tuần 8: build 82%, test 78%, khởi động 35 phút
+- Tuần 12: build 68%, test 61%, khởi động hơn 60 phút
+
+Cùng dự án nhưng có chiến lược dọn dẹp:
 
 - Tuần 1: 100%, 100%, 5 phút
 - Tuần 12: 97%, 95%, 9 phút
 
-Sau 12 tuần: tỷ lệ vượt qua build khác nhau 29 điểm phần trăm, thời gian khởi động phiên mới khác nhau 85%. Đây không phải lý thuyết — đây là sự khác biệt được quan sát.
+Sau 12 tuần: tỷ lệ build pass chênh 29 điểm phần trăm, thời gian khởi động phiên mới chênh 85%. Đây không phải lý thuyết, đây là khác biệt được quan sát.
 
-### Năm Chiều của Trạng thái Sạch
+## Cách làm đúng
 
-Trạng thái sạch không chỉ là "mã được biên dịch." Đó là năm chiều được đánh giá cùng nhau:
+### 1. Trạng thái sạch là điều kiện cần để hoàn thành
 
-**Chiều Build**: Mã có build không có lỗi không? Đây là cơ bản nhất — phiên tiếp theo không nên phải sửa lỗi build trước tiên.
-
-**Chiều Test**: Tất cả test có vượt qua không? Bao gồm cả test tồn tại trước phiên — phiên có trách nhiệm không làm hỏng chức năng hiện có. Và nó phải được xác minh trong CI, không chỉ "hoạt động trên máy của tôi."
-
-**Chiều Tiến độ**: Tiến độ hiện tại có được ghi lại trong một artifact có thể đọc bởi máy không? Các subtask đã hoàn thành với tiêu chí vượt qua của chúng, các subtask đang tiến hành nhưng chưa hoàn thành với trạng thái hiện tại, các subtask chưa bắt đầu. Bản ghi tiến độ tốt giảm 60-80% thời gian chẩn đoán khởi động phiên.
-
-**Chiều Artifact**: Có các artifact tạm thời hoặc mơ hồ lỗi thời không? Debug log, tệp tạm, mã bị comment out, marker TODO — tất cả những thứ này tăng tải nhận thức cho phiên tiếp theo.
-
-**Chiều Khởi động**: Đường dẫn khởi động chuẩn có khả dụng không? Phiên tiếp theo có thể bắt đầu làm việc mà không cần can thiệp thủ công không? Khởi tạo môi trường, tải codebase, thu thập ngữ cảnh, lựa chọn tác vụ — các đường dẫn này không được bị hỏng.
-
-### "Dọn dẹp sau" Có nghĩa là Không bao giờ Dọn dẹp
-
-Cái bẫy tâm lý phổ biến nhất là "không có thời gian dọn dẹp trong phiên này, tôi sẽ làm lần sau." Nhưng phiên agent tiếp theo không biết bạn đã để lại gì — nó thấy một mớ mã và trạng thái không chắc chắn. Nó sẽ dành nhiều thời gian để suy ra "phần nào của mã này là có chủ ý và phần nào là tạm thời."
-
-Tệ hơn, mỗi phiên có mục tiêu tác vụ riêng của mình. Phiên mới ở đó để làm công việc mới, không phải dọn dẹp mớ bòng bong của phiên trước. Nó sẽ bỏ qua sự hỗn loạn và bắt đầu công việc mới trên đó, giới thiệu thêm hỗn loạn trên đỉnh hỗn loạn. Đây là vòng phản hồi tích cực của entropy.
-
-## Cách Làm Đúng
-
-### 1. Trạng thái Sạch như Yêu cầu Hoàn thành
-
-Định nghĩa rõ ràng trong harness: **hoàn thành phiên = tác vụ vượt qua xác minh VÀ kiểm tra trạng thái sạch vượt qua.** Thiếu bất kỳ cái nào có nghĩa là phiên không hoàn thành. Viết trong CLAUDE.md:
+Ghi rõ trong harness: **hoàn thành phiên = tác vụ pass xác minh VÀ kiểm tra trạng thái sạch pass.** Thiếu một là phiên chưa hoàn thành. Viết trong CLAUDE.md:
 
 ```
-## Danh sách Kiểm tra Thoát Phiên
-- [ ] Build vượt qua (npm run build)
-- [ ] Tất cả test vượt qua (npm test)
-- [ ] Feature list đã được cập nhật
-- [ ] Không có mã debug còn lại (console.log, debugger, TODO)
-- [ ] Đường dẫn khởi động chuẩn khả dụng (npm run dev)
+## Danh sách kiểm tra thoát phiên
+- [ ] Build pass (npm run build)
+- [ ] Tất cả test pass (npm test)
+- [ ] Feature list đã cập nhật
+- [ ] Không còn code debug (console.log, debugger, TODO)
+- [ ] Đường khởi động chuẩn khả dụng (npm run dev)
 ```
 
-### 2. Chiến lược Dọn dẹp Hai Chế độ
+### 2. Chiến lược dọn dẹp hai chế độ
 
 Kết hợp hai chế độ dọn dẹp:
 
-**Dọn dẹp tức thì (ở cuối mỗi phiên)**: Dọn dẹp các artifact tạm thời được tạo trong phiên, cập nhật trạng thái feature list, đảm bảo build và test vượt qua. Đây là dọn dẹp "tính tham chiếu."
+**Dọn tức thì (cuối mỗi phiên)**: Dọn các artifact tạm sinh ra trong phiên, cập nhật trạng thái feature list, đảm bảo build và test pass. Đây là kiểu dọn "đếm tham chiếu": dùng xong là dọn ngay.
 
-**Dọn dẹp định kỳ (hàng tuần)**: Quét toàn hệ thống — xử lý các vấn đề cấu trúc tích lũy, cập nhật tài liệu chất lượng, chạy test benchmark để phát hiện trôi dạt. Đây là dọn dẹp "tracing."
+**Dọn định kỳ (hàng tuần)**: Quét toàn hệ thống, xử lý vấn đề cấu trúc tích tụ, cập nhật tài liệu chất lượng, chạy test benchmark phát hiện trôi dạt. Đây là kiểu dọn "tracing", một lượt bảo trì toàn diện theo nhịp cố định.
 
-### 3. Duy trì Tài liệu Chất lượng
+### 3. Duy trì tài liệu chất lượng
 
-Tài liệu chất lượng là một artifact đang hoạt động liên tục tính điểm mỗi module:
+Tài liệu chất lượng là một artifact sống, liên tục chấm điểm từng module:
 
 ```markdown
-# Tài liệu Chất lượng
+# Tài liệu chất lượng
 
-## Module Xác thực Người dùng (Chất lượng: A)
-- Xác minh vượt qua: Có
-- Agent có thể hiểu: Có
+## Module xác thực người dùng (Chất lượng: A)
+- Xác minh pass: Có
+- Agent hiểu được: Có
 - Độ ổn định test: Ổn định
 - Ranh giới kiến trúc: Tuân thủ
-- Quy ước mã: Được tuân theo
+- Quy ước code: Được theo
 
-## Module Thanh toán (Chất lượng: C)
-- Xác minh vượt qua: Một phần (payment callback chưa được test)
-- Agent có thể hiểu: Khó (logic trải rộng trên 3 tệp)
-- Độ ổn định test: Không ổn định (2 test flaky)
+## Module thanh toán (Chất lượng: C)
+- Xác minh pass: Một phần (callback thanh toán chưa test)
+- Agent hiểu được: Khó (logic rải trên 3 tệp)
+- Độ ổn định test: Chưa ổn (2 test flaky)
 - Ranh giới kiến trúc: Có vi phạm
-- Quy ước mã: Được tuân theo một phần
+- Quy ước code: Theo một phần
 ```
 
-Các phiên mới đọc tài liệu này và biết ngay nơi ưu tiên. Sửa module có điểm thấp nhất trước.
+Phiên mới đọc tài liệu này là biết ngay ưu tiên ở đâu. Sửa module có điểm thấp nhất trước.
 
-### 4. Định kỳ Đơn giản hóa Harness
+### 4. Định kỳ đơn giản hoá harness
 
-Một hiểu biết quan trọng từ Anthropic: **mỗi thành phần harness tồn tại vì mô hình không thể thực hiện điều gì đó một cách đáng tin cậy. Nhưng khi các mô hình cải thiện, các giả định này trở nên lỗi thời.** Một ràng buộc cần thiết ba tháng trước có thể là overhead không cần thiết ngày hôm nay.
+Mỗi thành phần harness tồn tại vì mô hình chưa thể tự làm việc đó một cách đáng tin. Nhưng khi mô hình mạnh lên, những giả định ấy trở nên lỗi thời.
 
-Thực hành được khuyến nghị: Mỗi tháng, chọn một thành phần harness, tạm thời vô hiệu hóa nó, và chạy các tác vụ benchmark. Nếu kết quả không giảm sút, hãy xóa vĩnh viễn. Nếu có, hãy khôi phục hoặc thay thế bằng một thay thế nhẹ hơn.
+Thí nghiệm của Anthropic chứng minh trực tiếp điều này. Harness ban đầu của họ có cơ chế chia sprint, chia việc thành từng khúc nhỏ để Sonnet 4.5 làm từng khúc một. Khi Opus 4.6 ra mắt, năng lực của mô hình đã tự phân rã công việc được, việc dựng sprint trở thành overhead thừa. Gỡ bỏ xong, agent builder làm việc liên tục hơn hai tiếng không trôi dạt, và còn trôi chảy hơn.
 
-### 5. Các Hoạt động Dọn dẹp Phải là Idempotent
+Nhưng câu chuyện ở evaluator lại khác. Kể cả với Opus 4.6 mạnh hơn, khi tác vụ tiệm cận biên năng lực mô hình, evaluator vẫn mang lại giá trị thật, bắt được các tính năng thiếu và stub của generator. Điều này nghĩa là evaluator không phải quyết định có/không cố định, nó phụ thuộc vào vị trí độ khó tác vụ so với năng lực mô hình.
 
-Script dọn dẹp phải an toàn để chạy lặp đi lặp lại:
+**Thực hành khuyến nghị**: Mỗi tháng, chọn một thành phần harness, tạm thời vô hiệu hoá, rồi chạy các tác vụ benchmark. Nếu kết quả không tụt, hãy gỡ vĩnh viễn. Nếu tụt, hãy khôi phục hoặc thay bằng phương án nhẹ hơn.
+
+Một nguyên lý sâu hơn: **khi mô hình mạnh lên, các tổ hợp thú vị trong harness không co lại, mà dịch chuyển.** Vấn đề trước đây cần giải pháp tường minh giờ được mô hình nuốt, nhưng những biên năng lực mới lại mở ra không gian thiết kế harness mà trước đây chưa khả thi. Công việc của kỹ sư AI là liên tục tìm ra tổ hợp giá trị kế tiếp.
+
+### 5. Thao tác dọn dẹp phải idempotent
+
+Script dọn dẹp phải an toàn để chạy lặp lại, chạy thêm một lần nữa cũng không sinh side effect:
 
 ```bash
-# Các hoạt động dọn dẹp idempotent
-rm -f /tmp/debug-*.log  # -f đảm bảo không có lỗi khi tệp không tồn tại
+# Thao tác dọn dẹp idempotent
+rm -f /tmp/debug-*.log  # -f đảm bảo không lỗi khi tệp không tồn tại
 git checkout -- .env.local  # Khôi phục về trạng thái đã biết
 npm run test  # Xác minh dọn dẹp không làm hỏng gì
 ```
 
-## Trường hợp Thực tế
+### 6. Thông lượng cao thay đổi triết lý merge
 
-Một ứng dụng Electron được phát triển với agent trong 12 tuần, so sánh hai cách tiếp cận:
+Khi đầu ra của agent vượt xa năng lực review của người, triết lý merge truyền thống cần điều chỉnh. Kinh nghiệm của OpenAI: trong môi trường agent mở 3.5 PR mỗi ngày (và sau đó còn nhiều hơn), tối thiểu hoá các cổng blocking merge là lựa chọn đúng. PR nên sống ngắn, test flakiness thường được giải quyết bằng các lần chạy sau thay vì blocking vô thời hạn. Trong một hệ thống mà chi phí sửa thấp còn chi phí chờ cao, đi nhanh và sửa nhanh là chiến lược tốt hơn so với xác nhận chậm.
 
-**Không có chiến lược dọn dẹp** (nhóm kiểm soát): Tuần 12, tỷ lệ vượt qua build 68%, tỷ lệ vượt qua test 61%, khởi động phiên mới 60+ phút, artifact lỗi thời 103.
+**Lưu ý**: Cách này thiếu trách nhiệm trong môi trường thông lượng thấp. Nhưng khi đầu ra của agent vượt xa sự chú ý của con người, đó thường là đánh đổi đúng. Tiêu chí then chốt: **chi phí trung bình sửa một bug so với chi phí trung bình chờ người review một PR.** Khi cái trước thấp hơn cái sau, merge nhanh là lựa chọn đúng.
 
-**Với chiến lược dọn dẹp** (nhóm thực nghiệm): Kiểm tra trạng thái sạch đầy đủ ở cuối mỗi phiên + vòng lặp dọn dẹp hàng tuần. Tuần 12, tỷ lệ vượt qua build 97%, tỷ lệ vượt qua test 95%, khởi động phiên mới 9 phút, artifact lỗi thời 11.
+## Câu chuyện thật
 
-Đến tuần 12, tỷ lệ vượt qua build của nhóm thực nghiệm cao hơn 29 điểm phần trăm, tỷ lệ vượt qua test cao hơn 34 điểm, và thời gian khởi động phiên mới thấp hơn 85%.
+Một ứng dụng Electron phát triển bằng agent trong 12 tuần, so sánh hai cách tiếp cận:
 
-## Những Điểm chính cần Nhớ
+**Không có chiến lược dọn dẹp** (nhóm đối chứng): Tuần 12, build pass 68%, test pass 61%, khởi động phiên mới hơn 60 phút, 103 artifact cũ.
 
-- **Trạng thái sạch là điều kiện cần thiết cho hoàn thành phiên** — không phải dọn dẹp tùy chọn, mà là một phần của "định nghĩa hoàn thành."
-- **Tất cả năm chiều đều bắt buộc** — build, test, tiến độ, artifact, khởi động — mỗi cái phải được kiểm tra rõ ràng.
-- **Tài liệu chất lượng làm cho sức khỏe codebase có thể theo dõi** — bạn chỉ có thể sửa những gì bạn biết đang suy giảm.
-- **Định kỳ đơn giản hóa harness** — khi năng lực mô hình cải thiện, hãy xóa các ràng buộc không còn cần thiết.
-- **"Dọn dẹp sau" bằng với không bao giờ dọn dẹp** — tăng trưởng entropy là mặc định; chỉ có dọn dẹp chủ động mới chống lại nó.
+**Có chiến lược dọn dẹp** (nhóm thực nghiệm): Kiểm tra trạng thái sạch đầy đủ cuối mỗi phiên, cộng với vòng dọn hàng tuần. Tuần 12, build pass 97%, test pass 95%, khởi động phiên mới 9 phút, 11 artifact cũ.
+
+Đến tuần 12, nhóm thực nghiệm có build pass cao hơn 29 điểm phần trăm, test pass cao hơn 34 điểm, và thời gian khởi động phiên mới thấp hơn 85%. Mỗi phiên chỉ tốn thêm 5 phút dọn dẹp, nhưng suốt 12 tuần nó tiết kiệm được hàng chục giờ hỗn loạn.
+
+## Những điểm chính cần nhớ
+
+- **Trạng thái sạch là điều kiện cần để hoàn thành phiên**, không phải dọn dẹp tuỳ chọn, mà là một phần của "định nghĩa hoàn thành".
+- **Cả năm chiều đều không thể thiếu**, build, test, tiến độ, artifact, khởi động, mỗi cái phải được kiểm tra tường minh.
+- **Tài liệu chất lượng làm sức khoẻ codebase trở nên theo dõi được**, bạn chỉ có thể chủ động sửa thứ bạn biết đang tụt dốc.
+- **Định kỳ đơn giản hoá harness**, khi năng lực mô hình cải thiện, gỡ các ràng buộc không còn cần thiết.
+- **"Dọn sau" nghĩa là không bao giờ dọn.** Tăng trưởng entropy là trạng thái mặc định, chỉ có dọn chủ động mới chống lại được.
 
 ## Đọc thêm
 
-- [Clean Code - Robert C. Martin](https://www.goodreads.com/book/show/3735293-clean-code) — Các nguyên tắc có hệ thống về sự sạch sẽ của mã
-- [Harness Engineering - OpenAI](https://openai.com/index/harness-engineering/) — Khả năng tái tạo như một yêu cầu thiết kế harness cốt lõi
-- [Effective Harnesses - Anthropic](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) — Vai trò quan trọng của thoát phiên sạch cho độ tin cậy dài hạn
-- [Programs, Life Cycles, and Laws of Software Evolution - Lehman](https://ieeexplore.ieee.org/document/1702314) — Các quy luật tiến hóa phần mềm chứng minh độ phức tạp hệ thống tất yếu tăng mà không có bảo trì chủ động
+- [Clean Code - Robert C. Martin](https://www.goodreads.com/book/show/3735293-clean-code) — Nguyên tắc có hệ thống về sạch sẽ của code
+- [Harness Engineering - OpenAI](https://openai.com/index/harness-engineering/) — Khả năng tái lập như yêu cầu thiết kế harness cốt lõi
+- [Effective Harnesses - Anthropic](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) — Vai trò then chốt của thoát phiên sạch với độ tin cậy dài hạn
+- [Programs, Life Cycles, and Laws of Software Evolution - Lehman](https://ieeexplore.ieee.org/document/1702314) — Định luật tiến hoá phần mềm chứng minh độ phức tạp tất yếu tăng khi không bảo trì chủ động
 
 ## Bài tập
 
-1. **Danh sách Kiểm tra Trạng thái Sạch**: Thiết kế một danh sách kiểm tra thoát phiên cho codebase của bạn bao phủ tất cả năm chiều. Áp dụng nó qua 5 phiên liên tiếp và ghi lại vi phạm theo từng chiều.
+1. **Danh sách kiểm tra trạng thái sạch**: Thiết kế danh sách kiểm tra thoát phiên cho codebase của bạn, bao phủ cả năm chiều. Áp dụng qua 5 phiên liên tiếp và ghi lại số vi phạm theo từng chiều.
 
-2. **So sánh Benchmark**: Sử dụng một bộ tác vụ cố định với hai biến thể harness (có/không có yêu cầu trạng thái sạch). So sánh tỷ lệ hoàn thành, số lần thử lại và tỷ lệ thoát lỗi.
+2. **So sánh benchmark**: Dùng một bộ tác vụ cố định với hai biến thể harness (có/không yêu cầu trạng thái sạch). So sánh tỷ lệ hoàn thành, số lần thử lại và tỷ lệ lỗi lọt qua.
 
-3. **Thực hành Đơn giản hóa Harness**: Chọn một thành phần harness, tạm thời vô hiệu hóa nó, và chạy các tác vụ benchmark. So sánh kết quả có và không có nó. Quyết định có giữ, xóa hay thay thế.
+3. **Thực hành đơn giản hoá harness**: Chọn một thành phần harness, tạm thời vô hiệu hoá, rồi chạy các tác vụ benchmark. So sánh kết quả có và không có nó. Quyết định giữ, gỡ hay thay thế.

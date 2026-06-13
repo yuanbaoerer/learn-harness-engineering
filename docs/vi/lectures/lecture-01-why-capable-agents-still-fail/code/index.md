@@ -1,7 +1,7 @@
-# Mã cho Bài 01
+# Code minh họa cho Bài 01
 
-Sử dụng thư mục này cho các ví dụ nhỏ minh họa:
+Dùng thư mục này cho các ví dụ nhỏ minh họa:
 
-- một mô hình mạnh thất bại trong môi trường yếu
-- thiết lập repo không được chỉ định rõ ràng
+- mô hình mạnh gặp thất bại trong môi trường yếu
+- thiết lập repo bị chỉ định thiếu rõ ràng
 - thiếu vòng phản hồi

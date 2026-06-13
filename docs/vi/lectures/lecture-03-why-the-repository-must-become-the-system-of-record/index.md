@@ -1,76 +1,76 @@
 [English Version →](../../../en/lectures/lecture-03-why-the-repository-must-become-the-system-of-record/) | [中文版本 →](../../../zh/lectures/lecture-03-why-the-repository-must-become-the-system-of-record/)
 
-> Ví dụ mã nguồn: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-03-why-the-repository-must-become-the-system-of-record/code/)
+> Ví dụ code: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-03-why-the-repository-must-become-the-system-of-record/code/)
 > Dự án thực hành: [Dự án 02. Không gian làm việc Agent đọc được](./../../projects/project-02-agent-readable-workspace/index.md)
 
-# Bài 03. Biến Kho lưu trữ Thành Nguồn Sự thật Duy nhất
+# Bài 03. Biến kho lưu trữ thành nguồn sự thật duy nhất
 
-Các quyết định kiến trúc của nhóm bạn rải rác khắp Confluence, Slack, Jira, và một vài cái đầu của các kỹ sư cấp cao. Đối với con người, điều này hoạt động gượng gạo — bạn có thể hỏi đồng nghiệp, tìm kiếm lịch sử chat, đào qua tài liệu. Nếu thất bại, bạn có thể chặn ai đó ở căng tin. Nhưng đối với AI agent, thông tin không có trong kho lưu trữ đơn giản là không tồn tại.
+Các quyết định kiến trúc của nhóm bạn đang nằm rải rác khắp Confluence, Slack, Jira và đầu của vài kỹ sư cấp cao. Với con người thì cách này gượng gạo mà xong: bạn có thể hỏi đồng nghiệp, tìm trong lịch sử chat, đào tài liệu. Tệ hơn nữa thì chặn ai đó ngoài hành lang cũng xong. Nhưng với AI agent, thông tin không có trong kho lưu trữ thì đơn giản là không tồn tại.
 
-Đây không phải phóng đại. Hãy nghĩ về các đầu vào thực sự của agent là gì: system prompt và mô tả tác vụ, nội dung tệp từ kho lưu trữ, và kết quả thực thi công cụ. Chỉ vậy thôi. Lịch sử Slack, ticket Jira, trang Confluence, và quyết định kiến trúc bạn thảo luận với đồng nghiệp qua cà phê vào chiều thứ Sáu — agent không thể thấy bất cứ điều nào trong số này. Nó không thể "đi hỏi ai đó" hoặc "tìm kiếm lịch sử chat." Nó là một kỹ sư bị nhốt bên trong kho lưu trữ — tất cả những gì bên ngoài, nó không biết gì cả.
+Điều này không phải phóng đại. Agent chỉ có ba nguồn đầu vào: system prompt và mô tả tác vụ, nội dung tệp trong kho lưu trữ, và kết quả thực thi công cụ. Lịch sử Slack, ticket Jira, trang Confluence, hay quyết định kiến trúc bạn bàn với đồng nghiệp trong cafe chiều thứ Sáu, agent không thấy bất kỳ thứ nào cả. Nó không thể "đi hỏi ai" hay "tìm trong lịch sử chat". Toàn bộ thế giới làm việc của nó chính là cái kho lưu trữ, mọi thứ nằm ngoài đó, nó hoàn toàn mù tịt.
 
-Vậy câu hỏi trở thành: bạn có định đưa cho kỹ sư này một bản đồ tốt không?
+Vậy câu hỏi đặt ra là: bạn có sẵn sàng đưa cho nó một tấm bản đồ đủ tốt hay không?
 
-## Những Gì Thuộc Về Bản Đồ
+## Những gì thuộc về bản đồ
 
-OpenAI nói thẳng: **thông tin không tồn tại trong repo, không tồn tại với agent.** Họ gọi đây là nguyên tắc "repo là spec" — bản thân kho lưu trữ là tài liệu đặc tả có thẩm quyền cao nhất.
+OpenAI phát biểu rất thẳng trong bài viết về harness engineering: **thông tin không tồn tại trong repo thì không tồn tại với agent.** Họ gọi đây là nguyên tắc "repo là spec": bản thân kho lưu trữ chính là tài liệu đặc tả có thẩm quyền cao nhất.
 
-Tài liệu về agent chạy lâu của Anthropic phản ánh điều này: trạng thái liên tục là điều kiện cần thiết cho tính liên tục của tác vụ dài. Khả năng phục hồi kiến thức xuyên phiên trực tiếp xác định tỷ lệ thành công của tác vụ. Và trạng thái này phải tồn tại trong kho lưu trữ — vì đó là bộ lưu trữ ổn định, có thể truy cập duy nhất mà agent có.
+Tài liệu về long-running agent của Anthropic cũng cùng quan điểm: trạng thái liên tục là điều kiện cần cho sự liên tục của tác vụ dài, và khả năng phục hồi kiến thức xuyên phiên quyết định trực tiếp tỷ lệ thành công của tác vụ. Trạng thái này bắt buộc phải nằm trong kho lưu trữ, vì đó là nơi lưu trữ ổn định và truy cập đáng tin cậy duy nhất mà agent có.
 
-Bạn có thể nghĩ: "Nhóm chúng tôi nhỏ, kiến thức nằm trong đầu mọi người, và nó vẫn hoạt động tốt." Chắc chắn, đối với con người. Nhưng nếu bạn đang sử dụng agent, hãy chấp nhận sự thật này: agent không thể hỏi người. Mọi thứ nó cần biết phải được viết xuống và đặt ở nơi nó có thể tìm thấy.
+Bạn có thể nghĩ: "Nhóm mình nhỏ, kiến thức nằm trong đầu mọi người, vẫn chạy ổn". Đúng vậy, với người thì ổn. Nhưng nếu muốn dùng agent, bạn phải chấp nhận một sự thật: agent không thể hỏi ai. Mọi thứ nó cần biết đều phải viết ra và đặt ở chỗ nó tìm thấy được.
 
-Đây không phải về "viết nhiều tài liệu hơn." Mà là về "đặt thông tin quyết định vào đúng chỗ." Một `ARCHITECTURE.md` 50 dòng trong thư mục `src/api/` hữu ích hơn mười nghìn lần so với một tài liệu thiết kế 500 trang trong Confluence mà không ai bảo trì. Giống như bản đồ văn phòng vẽ tay dán trên bàn làm việc của bạn so với bản vẽ kiến trúc đẹp bị khóa trong tủ hồ sơ — cái trước có sẵn ngay khi bạn cần; cái sau về mặt kỹ thuật ưu việt hơn nhưng vô dụng trong thời điểm đó.
+Đây không phải chuyện "viết thêm tài liệu", mà là chuyện "đặt thông tin quyết định vào đúng chỗ". Một tệp `ARCHITECTURE.md` 50 dòng nằm trong thư mục `src/api/` hữu ích hơn gấp mười lần so với một tài liệu thiết kế 500 trang trên Confluence mà không ai bảo trì. Khoảng cách vật lý quan trọng hơn độ dài, bởi vì thông tin chỉ thật sự hữu dụng khi nó ở ngay trước mặt đúng lúc bạn cần.
 
-## Khả năng Hiển thị Kiến thức
+## Khả năng hiển thị kiến thức
 
 ```mermaid
 flowchart LR
     Slack["Quy tắc trong Slack"] --> Write["Viết vào tệp repo<br/>AGENTS.md / ARCHITECTURE.md / PROGRESS.md"]
     Confluence["Quy tắc trong Confluence"] --> Write
-    Heads["Quy tắc trong đầu người"] --> Write
-    Jira["Quy tắc trong Jira ticket"] --> Write
-    Write --> Repo["Tệp kho lưu trữ"]
+    Heads["Quy tắc trong đầu kỹ sư"] --> Write
+    Jira["Quy tắc trong Jira"] --> Write
+    Write --> Repo["Tệp trong kho lưu trữ"]
     Repo --> Agent["Phiên agent mới<br/>đọc trực tiếp từ repo"]
-    Warning["Nếu một quy tắc không có trong repo,<br/>agent không thể nhìn thấy nó"] --> Agent
+    Warning["Nếu quy tắc không nằm trong repo,<br/>agent không thể thấy"] --> Agent
 ```
 
-Làm thế nào để kiểm tra xem bản đồ của bạn có đủ tốt không? Chạy "bài kiểm tra khởi động lạnh (cold-start test)": mở một phiên agent hoàn toàn mới chỉ sử dụng nội dung repo, và xem nó có thể trả lời năm câu hỏi cơ bản không:
+Làm sao kiểm tra bản đồ đã đủ tốt chưa? Hãy chạy "bài kiểm tra phiên mới" (fresh session test): mở một phiên agent hoàn toàn mới, chỉ cung cấp nội dung repo, rồi xem nó có trả lời được năm câu hỏi cơ bản hay không.
 
 ```mermaid
 flowchart TB
     Q1["Hệ thống này là gì?"] --> A1["AGENTS.md / README"]
-    Q2["Nó được tổ chức như thế nào?"] --> A2["ARCHITECTURE.md / tài liệu module"]
-    Q3["Làm thế nào để chạy nó?"] --> A3["Makefile / init.sh / package scripts"]
-    Q4["Làm thế nào để xác minh nó?"] --> A4["Lệnh test, lint và check"]
-    Q5["Chúng ta đang ở đâu bây giờ?"] --> A5["PROGRESS.md / feature list / git history"]
+    Q2["Được tổ chức ra sao?"] --> A2["ARCHITECTURE.md / tài liệu module"]
+    Q3["Chạy nó như thế nào?"] --> A3["Makefile / init.sh / package scripts"]
+    Q4["Xác minh nó bằng cách nào?"] --> A4["Lệnh test, lint, check"]
+    Q5["Hiện tại đang ở đâu?"] --> A5["PROGRESS.md / feature list / git history"]
 
-    A1 --> Ready["Một phiên mới có thể bắt đầu làm việc<br/>mà không cần hỏi con người"]
+    A1 --> Ready["Một phiên mới có thể bắt tay vào làm<br/>mà không cần hỏi con người"]
     A2 --> Ready
     A3 --> Ready
     A4 --> Ready
     A5 --> Ready
 ```
 
-Nếu nó không thể trả lời, bản đồ có những chỗ trống. Nơi bản đồ trống, agent đoán — đoán sai trở thành lỗi, đoán quá nhiều lãng phí ngữ cảnh. Và mỗi phiên mới lại đoán lại. Chi phí đoán luôn cao hơn chi phí vẽ bản đồ đúng cách ngay từ đầu.
+Nếu nó không trả lời được, bản đồ của bạn đang có lỗ hổng. Chỗ nào bản đồ trống, agent phải đoán. Đoán sai biến thành bug, đoán quá nhiều làm lãng phí ngữ cảnh. Và mỗi phiên mới lại đoán lại từ đầu. Chi phí đoán bao giờ cũng đắt hơn rất nhiều so với chi phí vẽ bản đồ cho đúng ngay từ đầu.
 
-## Các Khái niệm Cốt lõi
+## Các khái niệm cốt lõi
 
-- **Khoảng cách Hiển thị Kiến thức (Knowledge Visibility Gap)**: Tỷ lệ tổng kiến thức dự án KHÔNG có trong kho lưu trữ. Khoảng cách càng lớn, tỷ lệ thất bại của agent càng cao. Bao nhiêu kiến thức ẩn về dự án này sống trong đầu bạn? Đếm tất cả, sau đó xem bao nhiêu đã vào repo — sự khác biệt là khoảng cách hiển thị của bạn.
-- **Hệ thống Ghi chép (System of Record)**: Kho lưu trữ mã là nguồn có thẩm quyền cho các quyết định dự án, ràng buộc kiến trúc, trạng thái thực thi và tiêu chuẩn xác minh. Repo có tiếng nói cuối cùng, không nơi nào khác có giá trị. Giống như bản đồ có ghi "đường đóng cửa" — bạn sẽ không đi theo con đường đó. Nhưng nếu thông tin đó chỉ tồn tại trong đầu của Anh Nam, bạn phải hỏi Anh Nam mỗi lần.
-- **Bài kiểm tra Khởi động Lạnh (Cold-Start Test)**: Năm câu hỏi ở trên. Nó có thể trả lời bao nhiêu thì bản đồ của bạn hoàn chỉnh bấy nhiêu.
-- **Chi phí Khám phá (Discovery Cost)**: Ngân sách ngữ cảnh agent đốt cháy để tìm một thông tin quan trọng trong repo. Thông tin càng ẩn, chi phí khám phá càng cao, và ngân sách còn lại cho tác vụ thực tế càng ít. Ẩn thông tin quan trọng trong README sâu mười cấp thư mục giống như khóa bình chữa cháy trong két an toàn tầng hầm — nó tồn tại, nhưng bạn không thể tìm thấy khi cần.
-- **Tốc độ Suy giảm Kiến thức (Knowledge Decay Rate)**: Tỷ lệ các mục kiến thức trở nên lỗi thời theo đơn vị thời gian. Tài liệu không đồng bộ với mã là kẻ thù lớn nhất — tệ hơn không có tài liệu nào cả.
-- **Phép loại suy ACID**: Áp dụng các nguyên tắc giao dịch cơ sở dữ liệu (Tính nguyên tử, Nhất quán, Cô lập, Bền vững) vào quản lý trạng thái agent. Chúng ta sẽ mở rộng điều này dưới đây.
+- **Khoảng cách hiển thị kiến thức (Knowledge Visibility Gap)**: Tỷ lệ tổng kiến thức dự án mà KHÔNG nằm trong kho lưu trữ. Khoảng cách càng lớn, tỷ lệ thất bại của agent càng cao. Bạn có thể ước lượng bằng cách: liệt kê mọi kiến thức ẩn về dự án đang nằm trong đầu người, sau đó xem bao nhiêu phần trong số đó thật sự đã vào repo. Phần chênh lệch chính là khoảng cách hiển thị của bạn.
+- **Hệ thống ghi chép (System of Record)**: Kho lưu trữ code là nguồn có thẩm quyền cho các quyết định dự án, ràng buộc kiến trúc, trạng thái thực thi và tiêu chuẩn xác minh. Repo phát ngôn cuối cùng, không nơi nào khác có giá trị. Nếu thông tin "con đường này đang đóng" chỉ nằm trong đầu bác Tư, thì lần nào bạn cũng phải đi hỏi bác Tư. Viết vào repo, không ai phải hỏi nữa.
+- **Bài kiểm tra phiên mới (Fresh Session Test)**: Năm câu hỏi ở phần trên. Agent trả lời được bao nhiêu thì bản đồ của bạn đầy đủ bấy nhiêu.
+- **Chi phí khám phá (Discovery Cost)**: Lượng ngân sách ngữ cảnh mà agent đốt để tìm ra một thông tin quan trọng trong repo. Thông tin càng giấu kín, chi phí khám phá càng cao, và ngân sách còn lại cho tác vụ thực càng ít. Những thông tin mang tính quyết định nên đặt ở chỗ agent nhìn thấy đầu tiên, chứ đừng chôn ở mười cấp thư mục sâu.
+- **Tốc độ suy giảm kiến thức (Knowledge Decay Rate)**: Tỷ lệ các mục kiến thức trong repo trở nên lỗi thời trên một đơn vị thời gian. Tài liệu lệch khỏi code là kẻ thù lớn nhất, tệ hơn cả việc không có tài liệu nào cả.
+- **Phép loại suy ACID**: Áp dụng các nguyên tắc giao dịch cơ sở dữ liệu (Atomicity, Consistency, Isolation, Durability) vào quản lý trạng thái agent. Chúng ta sẽ mở rộng điều này ngay bên dưới.
 
-## Cách Vẽ Bản Đồ Tốt
+## Cách vẽ một tấm bản đồ tốt
 
-**Nguyên tắc 1: Kiến thức sống gần mã.** Một quy tắc về xác thực API endpoint thuộc về gần mã API, không bị chôn vùi trong một tài liệu toàn cục khổng lồ. Đặt một tài liệu ngắn trong mỗi thư mục module giải thích trách nhiệm, giao diện và các ràng buộc đặc biệt của module đó. Giống như nhãn kệ thư viện — bạn muốn sách lịch sử, đi thẳng đến kệ ghi nhãn "Lịch sử." Không cần tìm kiếm toàn bộ thư viện.
+**Nguyên tắc 1: Kiến thức sống cạnh code.** Một quy tắc về xác thực API endpoint thuộc về cạnh đoạn code API, không bị chôn trong một tài liệu toàn cục khổng lồ. Đặt một tài liệu ngắn trong thư mục mỗi module, giải thích trách nhiệm, giao diện và các ràng buộc đặc biệt của module đó. Bản thân thư mục module đã là một chỉ mục tự nhiên, agent chạm tới code là chạm tới luôn ràng buộc, không cần tìm kiếm gì thêm.
 
-**Nguyên tắc 2: Sử dụng tệp đầu vào được chuẩn hóa.** `AGENTS.md` (hoặc `CLAUDE.md`) là "trang đích" của agent. Nó không cần chứa tất cả thông tin, nhưng phải để agent nhanh chóng trả lời ba câu hỏi: "Dự án này là gì," "Làm thế nào để chạy nó," và "Làm thế nào để xác minh nó." 50-100 dòng là đủ.
+**Nguyên tắc 2: Dùng một tệp đầu vào chuẩn hóa.** `AGENTS.md` (hoặc `CLAUDE.md`) là "trang đích" của agent. Nó không cần chứa hết thông tin, nhưng phải giúp agent nhanh chóng trả lời ba câu hỏi: "Dự án này là gì", "Chạy nó như thế nào" và "Xác minh nó ra sao". 50-100 dòng là đủ.
 
-**Nguyên tắc 3: Tối giản nhưng đầy đủ.** Mỗi mảnh kiến thức nên có trường hợp sử dụng rõ ràng. Nếu xóa một quy tắc không ảnh hưởng đến chất lượng quyết định của agent, quy tắc đó không nên tồn tại. Nhưng mỗi câu hỏi từ bài kiểm tra khởi động lạnh phải có câu trả lời. Đây là sự cân bằng tế nhị — không quá nhiều, không quá ít, vừa đủ.
+**Nguyên tắc 3: Tối giản nhưng đầy đủ.** Mỗi mảnh kiến thức cần có một trường hợp sử dụng rõ ràng. Nếu bỏ một quy tắc đi mà chất lượng quyết định của agent không đổi, quy tắc đó không nên tồn tại. Nhưng mỗi câu hỏi trong bài kiểm tra phiên mới đều phải có câu trả lời. Đây là sự cân bằng cần duy trì liên tục, không thừa không thiếu, vừa đủ dùng.
 
-**Nguyên tắc 4: Cập nhật cùng mã.** Ràng buộc cập nhật kiến thức với thay đổi mã. Cách tiếp cận đơn giản nhất: đặt tài liệu kiến trúc trong thư mục module tương ứng. Khi bạn sửa đổi mã, bạn tự nhiên nhìn thấy tài liệu. Sau khi thay đổi mã, CI có thể nhắc nhở bạn kiểm tra xem tài liệu có cần cập nhật không.
+**Nguyên tắc 4: Cập nhật song song với code.** Buộc cập nhật kiến thức phải đi kèm thay đổi code. Cách đơn giản nhất: đặt tài liệu kiến trúc trong thư mục module tương ứng. Khi bạn sửa code, bạn tự nhiên để ý tới tài liệu. Sau khi code thay đổi, CI có thể nhắc bạn kiểm tra tài liệu có cần cập nhật theo không.
 
 **Cấu trúc repo cụ thể**:
 
@@ -79,46 +79,46 @@ project/
 ├── AGENTS.md              # Đầu vào: tổng quan dự án, lệnh chạy, ràng buộc cứng
 ├── src/
 │   ├── api/
-│   │   ├── ARCHITECTURE.md  # Quyết định kiến trúc lớp API
+│   │   ├── ARCHITECTURE.md  # Quyết định kiến trúc của lớp API
 │   │   └── ...
 │   ├── db/
-│   │   ├── CONSTRAINTS.md   # Ràng buộc cứng của hoạt động cơ sở dữ liệu
+│   │   ├── CONSTRAINTS.md   # Ràng buộc cứng trong thao tác cơ sở dữ liệu
 │   │   └── ...
 │   └── ...
-├── PROGRESS.md             # Tiến độ hiện tại: xong, đang thực hiện, bị chặn
+├── PROGRESS.md             # Tiến độ hiện tại: xong, đang làm, đang chặn
 └── Makefile                # Lệnh chuẩn hóa: setup, test, lint, check
 ```
 
-## Quản lý Trạng thái Agent với Nguyên tắc ACID
+## Quản lý trạng thái agent theo nguyên tắc ACID
 
-Phép loại suy này đến từ quản lý giao dịch cơ sở dữ liệu — bạn có thể nghĩ nó đang phức tạp hóa quá mức, nhưng nó thực sự cung cấp cho bạn một khung rất thực tế:
+Phép loại suy này xuất phát từ quản lý giao dịch cơ sở dữ liệu. Trông có vẻ phức tạp hóa vấn đề, nhưng thực ra nó cho bạn một khung rất thực dụng:
 
-- **Tính nguyên tử (Atomicity)**: Mỗi "hoạt động logic" (ví dụ: "thêm endpoint mới và cập nhật test") nhận một git commit. Nếu thất bại giữa chừng, `git stash` để khôi phục. Tất cả hoặc không có gì — không có "làm được một nửa."
-- **Nhất quán (Consistency)**: Xác định các vị từ xác minh "trạng thái nhất quán" — tất cả test qua, lint báo cáo không có lỗi. Agent chạy xác minh sau mỗi hoạt động; các trạng thái trung gian không nhất quán không được commit. Giống như chuyển khoản ngân hàng — bạn không thể ghi nợ mà không ghi có.
-- **Cô lập (Isolation)**: Khi nhiều agent hoạt động đồng thời, thiết kế các tệp trạng thái để tránh race condition. Cách tiếp cận đơn giản: mỗi agent sử dụng tệp tiến độ riêng, hoặc sử dụng git branch để cô lập. Hai đầu bếp không thể nêm cùng một nồi đồng thời — ai chịu trách nhiệm khi bị mặn quá?
-- **Bền vững (Durability)**: Kiến thức dự án quan trọng sống trong các tệp được theo dõi bởi git. Trạng thái tạm thời có thể ở lại trong bộ nhớ phiên, nhưng kiến thức xuyên phiên phải được lưu trữ vào tệp. Những gì trong đầu bạn không tính — chỉ những gì trên giấy mới tính.
+- **Tính nguyên tử (Atomicity)**: Mỗi "thao tác logic" (ví dụ: "thêm endpoint mới và cập nhật test") gói gọn trong một git commit. Nếu thất bại giữa chừng, dùng `git stash` để quay lại. Tất cả hoặc không có gì, không tồn tại trạng thái "làm dở".
+- **Tính nhất quán (Consistency)**: Định nghĩa các vị từ xác minh "trạng thái nhất quán" (toàn bộ test pass, lint báo số lỗi bằng 0). Agent chạy xác minh sau mỗi thao tác, và không commit những trạng thái trung gian chưa nhất quán. Sau một thao tác, hệ thống phải ở trạng thái xác minh được là đúng.
+- **Tính cô lập (Isolation)**: Khi nhiều agent chạy đồng thời, hãy thiết kế các tệp trạng thái để tránh race condition. Cách đơn giản: mỗi agent dùng tệp tiến độ riêng, hoặc dùng git branch để cô lập. Ghi đồng thời vào cùng một tệp là nguồn cơn trục trặc thường gặp.
+- **Tính bền vững (Durability)**: Kiến thức dự án quan trọng phải nằm trong các tệp được git theo dõi. Trạng thái tạm có thể nằm trong bộ nhớ phiên, nhưng kiến thức cần sống sót qua các phiên thì bắt buộc phải ghi vào tệp. Thứ trong đầu bạn không tính, chỉ thứ viết ra mới tính.
 
-## Câu chuyện Chuyển đổi Thực tế
+## Câu chuyện chuyển đổi thật
 
-Một nhóm duy trì một nền tảng thương mại điện tử với ~30 microservices. Các quyết định kiến trúc (giao thức giao tiếp giữa các dịch vụ, chiến lược nhất quán dữ liệu, quy tắc phiên bản API) bị rải rác khắp: Confluence (một phần lỗi thời), Slack (khó tìm kiếm), một vài đầu của các kỹ sư cấp cao (không có khả năng mở rộng), và các chú thích mã rải rác (không có hệ thống).
+Một nhóm vận hành một nền tảng thương mại điện tử gồm khoảng 30 microservice. Các quyết định kiến trúc (giao thức giao tiếp giữa dịch vụ, chiến lược nhất quán dữ liệu, quy tắc phiên bản API) nằm rải rác ở: Confluence (một phần đã lỗi thời), Slack (khó tìm kiếm), đầu vài kỹ sư cấp cao (không mở rộng được), và các chú thích code lác đác (không có hệ thống).
 
-Sau khi giới thiệu AI agent, 70% tác vụ yêu cầu can thiệp của con người. Gần như mọi lỗi đều liên quan đến agent vi phạm một số ràng buộc ẩn "mọi người biết nhưng không ai viết xuống." Giống như nhân viên mới mà không ai nói với họ "bạn cần đăng lệnh ăn trưa trong nhóm chat" — họ đoán sai, bị mắng, nhưng sau khi bị mắng vẫn không ai nói với họ quy tắc.
+Sau khi đưa AI agent vào, 70% tác vụ phải cần con người can thiệp. Gần như mọi thất bại đều xoay quanh việc agent vi phạm một ràng buộc ngầm nào đó mà "ai cũng biết nhưng chẳng ai viết ra". Agent không có cách nào biết được thứ mà nó không biết là mình chưa biết, nó chỉ có thể hành động theo hiểu biết của nó, rồi rơi thẳng vào bẫy.
 
-Nhóm đã thực hiện một cuộc chuyển đổi:
-1. Tạo `AGENTS.md` trong thư mục gốc repo với tổng quan dự án, phiên bản tech stack và các ràng buộc cứng toàn cục
-2. Thêm `ARCHITECTURE.md` trong mỗi thư mục microservice mô tả trách nhiệm, giao diện và phụ thuộc
-3. Tạo `CONSTRAINTS.md` tập trung với các ràng buộc cứng bằng ngôn ngữ "PHẢI/KHÔNG ĐƯỢC" rõ ràng
-4. Thêm `PROGRESS.md` trong mỗi thư mục dịch vụ theo dõi trạng thái công việc hiện tại
+Nhóm đó đã thực hiện một cuộc cải tổ:
+1. Tạo `AGENTS.md` ở thư mục gốc repo với tổng quan dự án, phiên bản tech stack và các ràng buộc cứng toàn cục
+2. Thêm `ARCHITECTURE.md` trong thư mục mỗi microservice, mô tả trách nhiệm, giao diện và phụ thuộc của dịch vụ đó
+3. Tạo một `CONSTRAINTS.md` tập trung, dùng ngôn ngữ "PHẢI / KHÔNG ĐƯỢC" rõ ràng cho các ràng buộc cứng
+4. Thêm `PROGRESS.md` trong thư mục mỗi dịch vụ để theo dõi trạng thái công việc hiện tại
 
-Sau chuyển đổi: cùng agent có thể trả lời tất cả các câu hỏi dự án quan trọng khi khởi động lạnh, và chất lượng hoàn thành tác vụ cải thiện đáng kể.
+Sau cải tổ: cùng một agent có thể trả lời tất cả câu hỏi quan trọng của dự án ngay trong một phiên mới, và chất lượng hoàn thành tác vụ cải thiện rõ rệt.
 
-## Những Điểm chính cần Nhớ
+## Những điểm chính cần nhớ
 
-- Kiến thức không có trong repo không tồn tại với agent. Đặt các quyết định quan trọng vào repo là đầu tư harness cơ bản nhất — vẽ bản đồ tốt để không bị lạc.
-- Sử dụng "bài kiểm tra khởi động lạnh" để đánh giá chất lượng repo: một phiên mới có thể trả lời năm câu hỏi cơ bản chỉ sử dụng nội dung repo không?
-- Kiến thức phải ở gần mã, tối giản nhưng đầy đủ, và cập nhật cùng mã. Không phải về viết nhiều tài liệu hơn — mà là đặt thông tin vào đúng chỗ.
-- Sử dụng nguyên tắc ACID cho trạng thái agent: commit nguyên tử, xác minh nhất quán, cô lập đồng thời, kiến thức quan trọng bền vững.
-- Suy giảm kiến thức là kẻ thù lớn nhất. Tài liệu không đồng bộ với mã nguy hiểm hơn không có tài liệu — nó đưa agent đi theo hướng sai trong khi nghĩ rằng mình đúng.
+- Kiến thức không nằm trong repo thì không tồn tại với agent. Đưa thông tin quyết định quan trọng vào kho lưu trữ là khoản đầu tư harness nền tảng nhất, hãy vẽ bản đồ cho tốt để không lạc.
+- Dùng "bài kiểm tra phiên mới" để đánh giá chất lượng repo: một phiên mới có trả lời được năm câu hỏi cơ bản khi chỉ nhìn vào nội dung repo không?
+- Kiến thức phải nằm cạnh code, tối giản nhưng đầy đủ, và cập nhật song song với code. Vấn đề không phải viết thêm tài liệu, mà là đặt thông tin vào đúng chỗ.
+- Vận dụng nguyên tắc ACID cho trạng thái agent: commit nguyên tử, xác minh nhất quán, cô lập đồng thời và bền vững hóa kiến thức quan trọng.
+- Suy giảm kiến thức là kẻ thù lớn nhất. Tài liệu lỗi thời còn nguy hiểm hơn không có tài liệu, vì nó đẩy agent đi hướng sai trong khi agent vẫn nghĩ mình đang đi đúng hướng.
 
 ## Đọc thêm
 
@@ -130,8 +130,8 @@ Sau chuyển đổi: cùng agent có thể trả lời tất cả các câu hỏ
 
 ## Bài tập
 
-1. **Bài kiểm tra khởi động lạnh**: Mở một phiên agent hoàn toàn mới trong dự án của bạn (không có ngữ cảnh lời nói, chỉ nội dung repo). Hỏi nó năm câu hỏi: Hệ thống này là gì? Nó được tổ chức như thế nào? Làm thế nào để chạy nó? Làm thế nào để xác minh nó? Tiến độ hiện tại là gì? Ghi lại những gì nó không thể trả lời, sau đó cải thiện repo cho đến khi nó có thể.
+1. **Bài kiểm tra phiên mới**: Mở một phiên agent hoàn toàn mới trong dự án của bạn (không cung cấp bất kỳ ngữ cảnh lời nói nào), chỉ cho nó thấy nội dung repo, rồi hỏi năm câu: Hệ thống này là gì? Được tổ chức ra sao? Chạy nó như thế nào? Xác minh nó bằng cách nào? Tiến độ hiện tại ra sao? Ghi lại những câu không trả lời được, sau đó cải thiện repo cho tới khi nó trả lời được hết.
 
-2. **Định lượng ngoại hóa kiến thức**: Liệt kê tất cả các quyết định và ràng buộc quan trọng cho công việc phát triển trong dự án của bạn. Đánh dấu mỗi cái là có trong hoặc ngoài repo. Tính khoảng cách hiển thị kiến thức của bạn (tỷ lệ ngoài repo). Lập kế hoạch để đưa nó xuống dưới 10%.
+2. **Định lượng mức độ ngoại hóa kiến thức**: Liệt kê tất cả quyết định và ràng buộc quan trọng cho việc phát triển trong dự án. Đánh dấu mỗi mục là đã nằm trong repo hay nằm ngoài repo. Tính khoảng cách hiển thị kiến thức (tỷ lệ mục nằm ngoài repo). Lập kế hoạch đưa con số này xuống dưới 10%.
 
-3. **Đánh giá ACID**: Đánh giá quản lý trạng thái dự án của bạn bằng phép loại suy ACID của bài giảng này. Tính nguyên tử — các hoạt động agent có thể được khôi phục sạch không? Nhất quán — có xác minh "trạng thái nhất quán" không? Cô lập — các agent đồng thời có giẫm lên nhau không? Bền vững — tất cả kiến thức xuyên phiên có được lưu trữ không?
+3. **Đánh giá ACID**: Đánh giá khâu quản lý trạng thái dự án theo phép loại suy ACID của bài giảng. Tính nguyên tử: các thao tác của agent có cuộn lại gọn ghẽ được không? Tính nhất quán: repo có vị từ xác minh "trạng thái nhất quán" không? Tính cô lập: các agent chạy đồng thời có giẫm lên nhau không? Tính bền vững: mọi kiến thức xuyên phiên đã được lưu trữ đúng cách chưa?

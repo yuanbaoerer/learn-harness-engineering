@@ -1,167 +1,167 @@
 [English Version →](../../../en/lectures/lecture-05-why-long-running-tasks-lose-continuity/) | [中文版本 →](../../../zh/lectures/lecture-05-why-long-running-tasks-lose-continuity/)
 
-> Ví dụ mã nguồn: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-05-why-long-running-tasks-lose-continuity/code/)
+> Ví dụ code: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-05-why-long-running-tasks-lose-continuity/code/)
 > Dự án thực hành: [Dự án 03. Tính liên tục đa phiên](./../../projects/project-03-multi-session-continuity/index.md)
 
-# Bài 05. Duy trì Ngữ cảnh Qua Các Phiên
+# Bài 05. Duy trì ngữ cảnh xuyên suốt các phiên
 
-Bạn yêu cầu Claude Code triển khai một tính năng hoàn chỉnh. Nó chạy 30 phút, thực hiện hầu hết công việc, nhưng ngữ cảnh đang cạn kiệt. Bạn bắt đầu một phiên mới để tiếp tục — và khám phá rằng nó không nhớ những quyết định nào đã được đưa ra lần trước, tại sao lại chọn phương án A thay vì phương án B, những tệp nào đã được sửa đổi, hay trạng thái của các bài test là gì. Nó dành 15 phút để khám phá lại dự án, và có thể không nhất quán với cách tiếp cận trước.
+Bạn yêu cầu Claude Code triển khai một tính năng hoàn chỉnh. Nó chạy 30 phút, xong phần lớn công việc, nhưng ngữ cảnh bắt đầu cạn. Bạn mở một phiên mới để tiếp tục, và phát hiện nó chẳng nhớ lần trước đã quyết định gì, vì sao lại chọn phương án A thay vì B, đã sửa những tệp nào, hay trạng thái test đang ra sao. Nó tốn 15 phút để khám phá lại dự án, rồi có khi còn đi theo hướng khác với lần trước.
 
-Hãy tưởng tượng bạn là một thợ thủ công quên hết mọi thứ mỗi buổi sáng khi thức dậy. Bạn phải làm quen lại với toàn bộ công trường — bức tường nào đang xây dở, tại sao lại chọn gạch đỏ thay vì gạch xanh, đường ống nước đã chạy đến đâu. Tệ hơn nữa, bạn có thể tháo ra một cửa sổ đã được lắp vào ngày hôm qua, đơn giản vì bạn không nhớ nó đã xong.
+Hãy tưởng tượng bạn là một người thợ mộng, mỗi buổi sáng thức dậy lại quên sạch chuyện hôm qua. Bạn phải làm quen lại với toàn bộ công trường: bức tường nào xây dở, vì sao chọn gạch đỏ thay vì gạch xanh, hệ thống ống nước đang chạy tới đâu. Tệ hơn nữa, bạn có thể tháo cả cái cửa sổ hôm qua đã lắp, chỉ vì không nhớ nó đã xong từ trước.
 
-Đây chính xác là tình huống khó khăn mà các AI coding agent phải đối mặt trong các tác vụ xuyên phiên. Bài giảng này giải thích tại sao các agent "mất ký ức" trong các tác vụ dài, và cách lưu trữ trạng thái có cấu trúc có thể làm cho chúng giống như một thợ thủ công giữ nhật ký đáng tin cậy hàng ngày — vẫn bị mất ký ức, nhưng nhật ký nhớ mọi thứ.
+Đó chính là bài toán mà AI coding agent phải đối mặt trong các tác vụ xuyên phiên. Bài giảng này giải thích vì sao agent "mất sợi dây" khi tác vụ kéo dài, và cách lưu trữ trạng thái có cấu trúc giúp phiên mới nhanh chóng nối tiếp phiên cũ.
 
-## Cửa sổ Ngữ cảnh: Không Vô hạn
+## Cửa sổ ngữ cảnh không phải vô hạn
 
-Cửa sổ ngữ cảnh là hữu hạn. Điều này không thể giải quyết bằng nâng cấp mô hình — ngay cả khi kích thước cửa sổ tăng lên 1M token, các tác vụ phức tạp vẫn sẽ tiêu hao chúng. Vì các agent không chỉ tạo ra mã; họ hiểu codebase, theo dõi lịch sử quyết định của chính mình, xử lý kết quả công cụ và duy trì ngữ cảnh hội thoại. Tất cả thông tin này tăng trưởng nhanh hơn sự mở rộng cửa sổ.
+Cửa sổ ngữ cảnh là hữu hạn. Đây không phải chuyện nâng cấp mô hình là giải quyết được, vì ngay cả khi cửa sổ phình lên 1M token, tác vụ phức tạp vẫn sẽ làm cạn kiệt nó. Agent không chỉ sinh code, nó còn phải hiểu codebase, theo dõi lịch sử quyết định của chính mình, xử lý kết quả công cụ và duy trì ngữ cảnh hội thoại. Tất cả những thứ này phình ra nhanh hơn tốc độ cửa sổ được mở rộng.
 
-Một vấn đề sâu hơn: thông tin mà agent tạo ra không đồng đều về mức độ quan trọng. Các bước lý luận trung gian chứa "tại sao" của các quyết định — tại sao chọn phương án B thay vì A, tại sao thư viện này thay vì kia, tại sao một tối ưu hóa cụ thể bị bỏ qua. Kết quả cuối cùng chỉ chứa "cái gì" — bản thân mã. Các chiến lược nén thường bảo tồn cái sau nhưng mất cái trước. Phiên tiếp theo thấy mã nhưng không biết tại sao nó được viết như vậy, và có thể "tối ưu hóa" đi một quyết định thiết kế cố ý.
+Một vấn đề sâu hơn: thông tin agent tạo ra không đồng đều về tầm quan trọng. Các bước lý luận trung gian chứa "vì sao" của những quyết định: vì sao chọn phương án B thay vì A, vì sao dùng thư viện này thay vì thư viện kia, vì sao bỏ qua một bước tối ưu nào đó. Kết quả cuối cùng chỉ giữ "cái gì": bản thân đoạn code. Các chiến lược nén thường giữ lại phần sau mà đánh mất phần trước. Phiên tiếp theo nhìn thấy code nhưng không biết vì sao nó được viết như vậy, và có khi còn "tối ưu hóa" đi mất một quyết định thiết kế có chủ đích.
 
-Anthropic đã phát hiện ra điều hấp dẫn trong nghiên cứu về agent chạy lâu của họ: khi các agent cảm thấy ngữ cảnh đang cạn kiệt, chúng thể hiện hành vi "hội tụ sớm" — vội vàng hoàn thành công việc hiện tại, bỏ qua các bước xác minh, hoặc chọn giải pháp đơn giản thay vì giải pháp tối ưu. Giống như nhận ra thời gian sắp hết trong bài thi và nhanh chóng đoán các câu hỏi trắc nghiệm còn lại. Anthropic gọi đây là "lo lắng ngữ cảnh."
+Nghiên cứu về long-running agent của Anthropic quan sát thấy một điều thú vị: khi agent cảm nhận ngữ cảnh sắp cạn, chúng thể hiện hành vi "vội vàng kết thúc", tức là lao đi hoàn thành nốt phần việc đang làm, bỏ qua bước xác minh, hoặc chọn giải pháp đơn giản thay vì giải pháp tối ưu. Anthropic gọi đây là "context anxiety" (lo lắng ngữ cảnh).
 
-## Luồng Tính Liên tục Phiên
+## Luồng liên tục giữa các phiên
 
-Không có các artifact tính liên tục, mọi phiên mới là một thảm họa:
+Không có tệp lưu trữ trạng thái, mỗi phiên mới đều phải bắt đầu lại từ đầu:
 
 ```mermaid
 flowchart LR
     S1["Phiên 1<br/>tính năng đang làm dở"] --> End1["Ngữ cảnh gần đầy<br/>phiên kết thúc"]
-    End1 --> S2["Phiên 2 bắt đầu mới"]
-    S2 --> Guess["Đọc lại thư mục, chạy lại test,<br/>đoán tại sao mã được viết như vậy"]
-    Guess --> Drift["Công việc bị lặp lại<br/>và phục hồi chậm"]
+    End1 --> S2["Phiên 2 mở mới hoàn toàn"]
+    S2 --> Guess["Đọc lại thư mục, chạy lại test,<br/>đoán vì sao code viết thế này"]
+    Guess --> Drift["Công việc bị lặp lại<br/>phục hồi rất chậm"]
 ```
 
-Với các artifact tính liên tục, các phiên mới có thể tiếp tục nhanh chóng:
+Khi có tệp lưu trữ trạng thái, phiên mới nối tiếp nhanh chóng:
 
 ```mermaid
 flowchart LR
-    Work["Công việc Phiên 1"] --> Progress["PROGRESS.md<br/>xong / đang làm / bước tiếp theo"]
-    Work --> Decisions["DECISIONS.md<br/>tại sao cách tiếp cận này được chọn"]
-    Work --> Verify["Ghi chú xác minh<br/>test nào vượt qua và thất bại"]
+    Work["Công việc phiên 1"] --> Progress["PROGRESS.md<br/>xong / đang làm / bước tiếp theo"]
+    Work --> Decisions["DECISIONS.md<br/>vì sao chọn cách tiếp cận này"]
+    Work --> Verify["Ghi chú xác minh<br/>test nào pass và fail"]
     Work --> Commit["Git checkpoint<br/>trạng thái repo chính xác"]
 
-    Progress --> Rebuild["Tái xây dựng Phiên 2"]
+    Progress --> Rebuild["Tái thiết lập phiên 2"]
     Decisions --> Rebuild
     Verify --> Rebuild
     Commit --> Rebuild
 
-    Rebuild --> Resume["Phiên mới tiếp tục nhanh chóng"]
+    Rebuild --> Resume["Phiên mới nối tiếp nhanh chóng"]
 ```
 
-## Các Khái niệm Cốt lõi
+## Các khái niệm cốt lõi
 
-- **Cửa sổ ngữ cảnh là hữu hạn**: Bất kể kích thước cửa sổ nào được tuyên bố (128K, 200K, 1M), các tác vụ dài cuối cùng sẽ tiêu hao chúng. Sau khi tiêu hao, cần phải nén (mất thông tin) hoặc đặt lại (phiên mới). Cả hai đều mất điều gì đó.
-- **Artifact tính liên tục (Continuity Artifacts)**: Các tệp trạng thái được lưu trữ cho phép phiên mới tiếp tục không mơ hồ từ nơi phiên cuối kết thúc. Dạng cơ bản: nhật ký tiến độ + bản ghi xác minh + các hành động tiếp theo. Nhật ký của thợ thủ công đó.
-- **Chi phí Tái xây dựng (Rebuild Cost)**: Thời gian phiên mới cần để đạt đến trạng thái có thể thực thi. Harness tốt có thể nén chi phí tái xây dựng từ 15 phút xuống còn 3 phút.
-- **Trôi dạt (Drift)**: Khoảng cách giữa sự hiểu biết của agent và trạng thái thực tế của kho lưu trữ mã. Mỗi ranh giới phiên tạo ra trôi dạt; nếu không kiểm soát, nó sẽ tích lũy.
-- **Lo lắng ngữ cảnh (Context Anxiety)**: Hiện tượng được Anthropic quan sát — các agent thể hiện hành vi hội tụ sớm khi tiếp cận giới hạn ngữ cảnh nhận thức, kết thúc tác vụ sớm để tránh mất thông tin. Đó là sự lo lắng tài nguyên phi lý.
-- **Nén vs. Đặt lại (Compaction vs. Reset)**: Nén tóm tắt ngữ cảnh trong cùng phiên (giữ "cái gì," có thể mất "tại sao"); đặt lại mở phiên mới tái xây dựng từ trạng thái được lưu trữ (sạch nhưng phụ thuộc vào tính hoàn chỉnh của artifact).
+- **Cửa sổ ngữ cảnh là hữu hạn**: Dù kích thước cửa sổ được quảng bá là bao nhiêu (128K, 200K, 1M), tác vụ dài rồi cũng sẽ cạn kiệt. Sau khi cạn, chỉ có hai lối: nén (mất thông tin) hoặc reset (mở phiên mới), cả hai đều mất thứ gì đó.
+- **Tệp lưu trữ trạng thái (State persistence files)**: Các tệp trạng thái được lưu lại, để phiên mới có thể tiếp tục rõ ràng ngay từ chỗ phiên trước dừng lại. Dạng cơ bản nhất gồm nhật ký tiến độ, bản ghi xác minh và các bước kế tiếp.
+- **Chi phí tái thiết lập (Rebuild cost)**: Thời gian phiên mới cần để đạt tới trạng thái có thể thực thi. Một harness tốt có thể nén chi phí này từ 15 phút xuống còn 3 phút.
+- **Trôi dạt (Drift)**: Khoảng cách giữa hiểu biết của agent và trạng thái thật của kho lưu trữ code. Mỗi ranh giới phiên lại tạo ra trôi dạt; không kiểm soát, nó sẽ tích tụ qua từng phiên.
+- **Lo lắng ngữ cảnh (Context anxiety)**: Hiện tượng Anthropic quan sát thấy: agent thể hiện hành vi vội vàng kết thúc khi ngữ cảnh gần tới giới hạn, kết thúc tác vụ sớm để tránh mất thông tin. Bản chất là sự lo lắng tài nguyên vô lý.
+- **Nén so với đặt lại (Compaction vs. reset)**: Nén tóm tắt ngữ cảnh trong cùng phiên (giữ "cái gì", có thể mất "vì sao"); đặt lại mở phiên mới, tái thiết lập từ trạng thái đã lưu (sạch sẽ nhưng phụ thuộc vào độ đầy đủ của các artifact).
 
-## Điều Gì Xảy ra Khi Tính Liên tục Bị Phá vỡ
+## Chuyện gì xảy ra khi tính liên tục bị đứt gãy
 
-Phiên trước đã dành ngân sách ngữ cảnh đáng kể để phân tích ba cách tiếp cận và chọn phương án B. Phiên này của agent không biết về phân tích đó và có thể quyết định lại dựa trên thông tin không đầy đủ — có thể chọn phương án A. Giống như thợ thủ công mất ký ức không nhớ tại sao gạch đỏ được chọn, nhìn vào gạch xanh ngày hôm nay và nghĩ chúng đẹp hơn, và tháo bức tường của ngày hôm qua để xây lại.
+Phiên trước đã tốn một lượng lớn ngân sách ngữ cảnh để phân tích ba cách tiếp cận rồi chọn phương án B. Phiên này, agent không biết gì về phân tích đó và có thể quyết lại dựa trên thông tin chưa đầy đủ, có khi lại chọn phương án A. Cùng dữ liệu, kết luận khác, chỉ vì bối cảnh ra quyết định đã biến mất.
 
-Thậm chí còn tệ hơn là công việc trùng lặp. Agent không chắc chắn liệu một số công việc đã hoàn thành chưa và làm lại. Hoặc tệ hơn — làm một nửa, phát hiện ra xung đột với triển khai hiện có, và phải làm lại. Trên công trường, hai đội không thể xây cùng một bức tường đồng thời — nhưng không có bản ghi tiến độ, đội mới không biết có ai đó đang làm việc đó rồi.
+Tệ hơn cả là trùng lặp công việc. Agent không chắc phần nào đã xong, nên làm lại. Hoặc tệ hơn, làm được nửa chừng, phát hiện xung đột với phần triển khai đang có, rồi phải sửa lại từ đầu. Nếu không có bản ghi tiến độ, phiên mới không hề biết phần việc nào đã hoàn thành.
 
-Qua nhiều phiên, hướng triển khai có thể đã âm thầm trôi xa khỏi yêu cầu ban đầu. Mỗi phiên mới có sự hiểu biết hơi khác nhau về mục tiêu dự án. Giống như trò chơi truyền tin — sau mười người truyền tin, "đón tôi một ly cà phê" có thể trở thành "mua cho tôi máy pha cà phê."
+Qua nhiều phiên, hướng triển khai có thể âm thầm trôi xa khỏi yêu cầu ban đầu. Mỗi phiên mới lại hiểu mục tiêu dự án hơi khác đi một chút. Mỗi lệch hướng chồng lên lệch hướng trước, và kết quả cuối cùng có khi chẳng còn giống ý đồ gốc.
 
-Cũng có khoảng cách xác minh. Kết quả xác minh của phiên trước (test nào vượt qua, test nào thất bại, tại sao thất bại) không được ghi lại. Phiên mới phải chạy lại tất cả xác minh để hiểu trạng thái hiện tại. Mỗi phiên chẩn đoán lại từ đầu, mỗi lần lãng phí ngữ cảnh quý báu.
+Còn có cả khoảng cách xác minh. Kết quả xác minh của phiên trước (test nào pass, test nào fail, vì sao fail) không được ghi lại. Phiên mới phải chạy lại toàn bộ xác minh để hiểu trạng thái hiện tại. Mỗi phiên lại chẩn đoán lại từ đầu, mỗi lần đều lãng phí ngữ cảnh quý giá.
 
-Cả OpenAI và Anthropic đều nhấn mạnh lưu trữ trạng thái có cấu trúc trong tài liệu của họ. Bài viết về harness engineering của OpenAI coi kho lưu trữ là "bản ghi hoạt động" — kết quả của mỗi hoạt động phải để lại bằng chứng có thể truy vết trong repo. Tài liệu về agent chạy lâu của Anthropic đặc biệt khuyến nghị "tệp bàn giao" — các tài liệu có cấu trúc chứa trạng thái hiện tại, các vấn đề đã biết và các hành động tiếp theo.
+Cả OpenAI và Anthropic đều nhấn mạnh tầm quan trọng của lưu trữ trạng thái có cấu trúc trong tài liệu. Bài viết về harness engineering của OpenAI xem kho lưu trữ là "bản ghi hoạt động": kết quả của mỗi thao tác phải để lại bằng chứng truy vết được trong repo. Tài liệu về long-running agent của Anthropic đặc biệt khuyến nghị dùng "handoff files", tức các tài liệu có cấu trúc ghi rõ trạng thái hiện tại, các vấn đề đã biết và các bước kế tiếp.
 
-## Nhật ký Cho Thợ thủ công Mất Ký ức
+## Cách tiếp cận thực tế để lưu trữ trạng thái
 
-Cách tiếp cận cốt lõi: **Đối xử với agent như một kỹ sư tài giỏi bị mất ký ức.** Trước khi nó "tan ca," nó phải ghi lại thông tin quan trọng để agent "ca tiếp theo" có thể tiếp tục nhanh chóng.
+Cách tiếp cận cốt lõi: **hãy đối xử với agent như một kỹ sư mà bộ nhớ ngắn hạn bị xóa sạch mỗi phiên.** Trước khi "tan ca", nó phải ghi lại thông tin quan trọng để agent "ca sau" nối tiếp nhanh chóng.
 
-**Công cụ 1: Tệp tiến độ (PROGRESS.md).** Artifact tính liên tục cơ bản nhất — cốt lõi của nhật ký:
+**Công cụ 1: Tệp tiến độ (PROGRESS.md).** Tệp lưu trữ trạng thái cơ bản nhất:
 
 ```markdown
-# Tiến độ Dự án
+# Tiến độ dự án
 
-## Trạng thái Hiện tại
+## Trạng thái hiện tại
 - Commit mới nhất: abc1234 (feat: add user preferences endpoint)
-- Trạng thái test: 42/43 vượt qua (test_pagination_edge_case thất bại)
-- Lint: vượt qua
+- Trạng thái test: 42/43 vượt qua (test_pagination_edge_case đang fail)
+- Lint: pass
 
-## Đã Hoàn thành
+## Đã hoàn thành
 - [x] User model và database migration
 - [x] Các endpoint CRUD cơ bản
 - [x] Tích hợp auth middleware
 
-## Đang Thực hiện
-- [ ] Tính năng phân trang (90% - edge case test thất bại)
+## Đang thực hiện
+- [ ] Tính năng phân trang (90% - edge case test đang fail)
 
-## Vấn đề Đã biết
-- test_pagination_edge_case trả về 500 trên result sets trống
-- Cần xác nhận liệu người dùng đã xóa có nên xuất hiện trong danh sách không
+## Vấn đề đã biết
+- test_pagination_edge_case trả về 500 với result set rỗng
+- Cần xác nhận người dùng đã xoá có nên hiển thị trong danh sách không
 
-## Các Bước Tiếp theo
+## Các bước tiếp theo
 1. Sửa lỗi edge case phân trang
-2. Thêm tham số truy vấn "include deleted users"
+2. Thêm query param "include deleted users"
 3. Cập nhật tài liệu API
 ```
 
-**Công cụ 2: Nhật ký quyết định (DECISIONS.md).** Ghi lại các quyết định thiết kế quan trọng và lý do. Không cần tài liệu thiết kế chi tiết — chỉ cần "quyết định gì, tại sao, khi nào" — các ghi chú trong nhật ký:
+**Công cụ 2: Nhật ký quyết định (DECISIONS.md).** Ghi lại các quyết định thiết kế quan trọng cùng lý do. Không cần tài liệu thiết kế chi tiết, chỉ cần "quyết định gì, vì sao, khi nào":
 
 ```markdown
-# Các Quyết định Thiết kế
+# Các quyết định thiết kế
 
-## 2024-01-15: Sử dụng Redis để cache tùy chọn người dùng
+## 2024-01-15: Dùng Redis để cache tùy chọn người dùng
 - Lý do: Tần suất đọc cao (mỗi lần gọi API), kích thước dữ liệu nhỏ
-- Phương án bị từ chối: PostgreSQL materialized view (tần suất thay đổi cao làm chi phí bảo trì không xứng đáng)
-- Ràng buộc: Cache TTL 5 phút, vô hiệu hóa chủ động khi ghi
+- Phương án bị loại: PostgreSQL materialized view (tần suất thay đổi cao khiến chi phí bảo trì không xứng)
+- Ràng buộc: TTL cache 5 phút, chủ động vô hiệu khi ghi
 ```
 
-**Công cụ 3: Git commit như checkpoint.** Commit sau khi hoàn thành mỗi đơn vị công việc nguyên tử. Commit message phải giải thích những gì đã được thực hiện và tại sao. Đây là các snapshot trạng thái miễn phí, được phiên bản hóa tự động.
+**Công cụ 3: Git commit làm checkpoint.** Commit sau khi hoàn thành mỗi đơn vị công việc nguyên tử. Commit message phải giải thích đã làm gì và vì sao. Đây là các snapshot trạng thái miễn phí, tự động được phiên bản hoá.
 
-**Công cụ 4: init.sh hoặc luồng khởi tạo harness.** Chỉ định trong `AGENTS.md` các thói quen "bắt đầu ca" và "kết thúc ca":
+**Công cụ 4: init.sh hoặc luồng khởi tạo harness.** Ghi trong `AGENTS.md` các thói quen "vào ca" và "tan ca":
 
 ```markdown
-## Khi bắt đầu phiên (bắt đầu ca)
-1. Đọc PROGRESS.md để biết trạng thái hiện tại
-2. Đọc DECISIONS.md để biết các quyết định quan trọng
-3. Chạy make check để xác nhận repo ở trạng thái nhất quán
-4. Tiếp tục từ phần "Các Bước Tiếp theo" của PROGRESS.md
+## Khi bắt đầu phiên (vào ca)
+1. Đọc PROGRESS.md để nắm trạng thái hiện tại
+2. Đọc DECISIONS.md để nắm các quyết định quan trọng
+3. Chạy make check để xác nhận repo đang ở trạng thái nhất quán
+4. Tiếp tục từ mục "Các bước tiếp theo" trong PROGRESS.md
 
-## Trước khi kết thúc phiên (kết thúc ca)
+## Trước khi kết thúc phiên (tan ca)
 1. Cập nhật PROGRESS.md
 2. Chạy make check để xác nhận trạng thái nhất quán
-3. Commit tất cả công việc đã hoàn thành
+3. Commit tất cả phần việc đã hoàn thành
 ```
 
-**Chiến lược hỗn hợp**: Không phải mọi tác vụ đều cần đặt lại ngữ cảnh. Các tác vụ ngắn (dưới 30 phút) có thể hoàn thành trong một phiên. Các tác vụ dài (trải dài qua các phiên) phải sử dụng tệp tiến độ và nhật ký quyết định để tính liên tục. Tiêu chí quyết định: nếu một tác vụ cần hơn 60% cửa sổ, hãy bắt đầu chuẩn bị bàn giao.
+**Chiến lược hỗn hợp**: Không phải tác vụ nào cũng cần reset ngữ cảnh. Tác vụ ngắn (dưới 30 phút) có thể xử lý gọn trong một phiên. Tác vụ dài (trải nhiều phiên) bắt buộc phải dùng tệp tiến độ và nhật ký quyết định để duy trì tính liên tục. Tiêu chí quyết định: nếu tác vụ cần hơn 60% cửa sổ ngữ cảnh, hãy bắt đầu chuẩn bị bàn giao.
 
-### Tìm hiểu Sâu hơn về Lo lắng Ngữ cảnh
+### Tìm hiểu sâu hơn về lo lắng ngữ cảnh
 
-Nghiên cứu tháng 3 năm 2026 của Anthropic tiếp tục tiết lộ các biểu hiện cụ thể của lo lắng ngữ cảnh: trên Sonnet 4.5, khi ngữ cảnh tiếp cận giới hạn cửa sổ, agent thể hiện hành vi "hội tụ sớm" mạnh. Giống như nhận ra thời gian gần hết trong bài thi và nhanh chóng điền câu trả lời ngẫu nhiên vào các câu trắc nghiệm.
+Nghiên cứu tháng 3 năm 2026 của Anthropic tiếp tục hé lộ các biểu hiện cụ thể của context anxiety: trên Sonnet 4.5, khi ngữ cảnh tiệm cận giới hạn cửa sổ, agent thể hiện hành vi "vội vàng kết thúc" rất mạnh. Cũng giống như nhận ra thời gian trong phòng thi sắp hết, rồi điền đại đáp án ngẫu nhiên vào các câu trắc nghiệm còn lại.
 
-Hai chiến lược giải quyết điều này:
+Hai chiến lược xử lý chuyện này:
 
-**Nén (Compaction)**: Tóm tắt hội thoại đầu trong cùng phiên. Ưu điểm: duy trì tính liên tục, agent có thể thấy "cái gì." Nhược điểm: "tại sao" thường bị mất trong các bản tóm tắt — tại sao phương án B được chọn thay vì A, tại sao một tối ưu hóa cụ thể bị bỏ qua. Quan trọng hơn, nén không loại bỏ lo lắng ngữ cảnh — agent biết ngữ cảnh từng lớn, và về mặt tâm lý vẫn có xu hướng vội vàng kết thúc.
+**Nén (Compaction)**: Tóm tắt phần đầu cuộc hội thoại trong cùng phiên. Ưu điểm: duy trì tính liên tục, agent vẫn thấy "cái gì". Nhược điểm: "vì sao" thường bị mất trong các bản tóm tắt, ví dụ vì sao chọn phương án B thay vì A, vì sao bỏ qua một bước tối ưu nào đó. Nghiêm trọng hơn, nén không loại bỏ context anxiety: agent biết ngữ cảnh từng rất lớn, về mặt tâm lý vẫn có xu hướng vội vàng kết thúc.
 
-**Đặt lại ngữ cảnh (Context Reset)**: Xóa hoàn toàn ngữ cảnh, mở phiên mới, tái xây dựng từ các artifact được lưu trữ. Ưu điểm: trạng thái tâm trí sạch — phiên mới không có lo lắng "tôi sắp hết thời gian." Nhược điểm: phụ thuộc vào tính hoàn chỉnh của artifact bàn giao. Nếu nhật ký thiếu thông tin quan trọng, phiên mới có thể lãng phí thời gian đi theo hướng sai.
+**Đặt lại ngữ cảnh (Context reset)**: Xóa sạch ngữ cảnh, mở phiên mới, tái thiết lập từ các artifact đã lưu. Ưu điểm: trạng thái tinh thần sạch sẽ, phiên mới không còn nỗi lo "mình sắp hết thời gian". Nhược điểm: phụ thuộc vào độ đầy đủ của các artifact bàn giao. Nếu tệp tiến độ thiếu thông tin quan trọng, phiên mới có thể lãng phí thời gian đi theo hướng sai.
 
-Dữ liệu thực tế của Anthropic: đối với Sonnet 4.5, lo lắng ngữ cảnh đủ nghiêm trọng đến mức nén một mình không đủ — đặt lại ngữ cảnh trở thành thành phần quan trọng của thiết kế harness. Nhưng đối với Opus 4.5, hành vi này giảm đáng kể, và nén có thể quản lý ngữ cảnh mà không cần dựa vào đặt lại. Điều này có nghĩa là: **thiết kế harness cần sự hiểu biết cụ thể về mô hình mục tiêu, không phải một mẫu chung cho tất cả.**
+Dữ liệu thực tế từ Anthropic: với Sonnet 4.5, context anxiety nghiêm trọng đến mức chỉ nén là chưa đủ, đặt lại ngữ cảnh trở thành thành phần cốt lõi của thiết kế harness. Nhưng với Opus 4.5, hành vi này giảm hẳn, nén đã có thể quản lý ngữ cảnh mà không cần dựa vào reset. Điều này có nghĩa: **thiết kế harness cần hiểu rõ mô hình mục tiêu, không dùng chung một khuôn cho tất cả.**
 
 > Nguồn: [Anthropic: Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps)
 
-## Ví dụ Thực tế
+## Ví dụ thật
 
-Một agent được giao nhiệm vụ triển khai hệ thống blog với xác thực người dùng — 12 điểm tính năng, ước tính cần 5 phiên.
+Một agent được giao triển khai hệ thống blog có xác thực người dùng, 12 điểm tính năng, ước tính cần 5 phiên.
 
-**Không có nhật ký**: Phiên 1 triển khai user model và các route cơ bản. Phiên 2 bắt đầu mà agent không nhớ hợp đồng giao diện của auth middleware, dành ~15 phút để suy ra ý định thiết kế trước. Đến phiên 3, trôi dạt tích lũy khiến agent bắt đầu triển khai lại các tính năng đã hoàn thành. Đến phiên 5, repo chứa nhiều mã dư thừa nhưng tính năng auth cốt lõi vẫn chưa vượt qua test end-to-end. Chỉ 7 trong 12 điểm tính năng hoàn thành, 3 có vấn đề tính đúng đắn ẩn. Giống như thợ thủ công không bao giờ ghi nhật ký — đến ngày thứ năm, công trường là hỗn loạn, một số bức tường được xây hai lần, một số lẽ ra phải được xây nhưng chưa bao giờ bắt đầu.
+**Baseline không có tệp lưu trữ trạng thái**: Phiên 1 triển khai user model và các route cơ bản. Phiên 2 mở ra mà agent chẳng nhớ hợp đồng giao diện của auth middleware, tốn khoảng 15 phút để dò lại ý đồ thiết kế trước đó. Đến phiên 3, trôi dạt tích tụ khiến agent bắt đầu triển khai lại các tính năng đã hoàn thành. Sang phiên 5, repo chứa nhiều code thừa nhưng tính năng auth cốt lõi vẫn chưa qua được test end-to-end. Chỉ 7 trên 12 điểm tính năng hoàn thành, trong đó 3 điểm có lỗi ngầm.
 
-**Với nhật ký**: Sử dụng tệp tiến độ, nhật ký quyết định, bản ghi xác minh và git checkpoint. Báo cáo trạng thái được cập nhật tự động ở cuối mỗi phiên. Chi phí tái xây dựng của phiên 2 giảm xuống còn ~3 phút. Đến phiên 5, tất cả 12 điểm tính năng hoàn thành và được xác minh.
+**Có tệp lưu trữ trạng thái**: Dùng tệp tiến độ, nhật ký quyết định, bản ghi xác minh và git checkpoint. Báo cáo trạng thái tự động cập nhật ở cuối mỗi phiên. Chi phí tái thiết lập của phiên 2 giảm xuống còn khoảng 3 phút. Đến phiên 5, đủ cả 12 điểm tính năng được hoàn thành và xác minh.
 
-So sánh định lượng: thời gian tái xây dựng giảm ~78%, tỷ lệ hoàn thành tính năng từ 58% lên 100%, tỷ lệ lỗi ẩn từ 43% xuống còn 8%. Thợ thủ công vẫn mất ký ức, nhưng với nhật ký, mỗi ngày bắt đầu từ nơi ngày hôm qua dừng lại, không phải từ đầu.
+So sánh định lượng: thời gian tái thiết lập giảm khoảng 78%, tỷ lệ hoàn thành tính năng từ 58% lên 100%, tỷ lệ lỗi ngầm từ 43% giảm còn 8%.
 
-## Những Điểm chính cần Nhớ
+## Những điểm chính cần nhớ
 
-- Cửa sổ ngữ cảnh là tài nguyên hữu hạn. Các tác vụ dài sẽ trải dài qua nhiều phiên, và các phiên sẽ mất thông tin — giống như thợ thủ công quên mỗi ngày, đây là thực tế khách quan.
-- Giải pháp không phải là cửa sổ lớn hơn — mà là lưu trữ trạng thái tốt hơn. Tệp tiến độ + nhật ký quyết định + git checkpoint — đưa cho thợ thủ công mất ký ức một cuốn nhật ký đáng tin cậy.
-- Đối xử với agent như kỹ sư bị mất ký ức: trước khi "tan ca," hãy ghi lại những gì đã làm, tại sao, và tiếp theo là gì.
-- Chi phí tái xây dựng là chỉ số chính. Harness tốt phải đưa các phiên mới đến trạng thái có thể thực thi trong vòng 3 phút.
-- Chiến lược hỗn hợp: các tác vụ ngắn trong phiên, các tác vụ dài với artifact có cấu trúc để tính liên tục.
+- Cửa sổ ngữ cảnh là tài nguyên hữu hạn. Tác vụ dài sẽ trải qua nhiều phiên, và các phiên sẽ mất thông tin, đó là thực tế khách quan.
+- Giải pháp không phải cửa sổ lớn hơn, mà là lưu trữ trạng thái tốt hơn. Tệp tiến độ, nhật ký quyết định và git checkpoint phối hợp với nhau, để phiên mới nối tiếp phiên cũ.
+- Hãy đối xử với agent như một kỹ sư bị xóa trắng bộ nhớ ngắn hạn mỗi phiên: trước khi "tan ca", phải ghi lại đã làm gì, vì sao, và bước tiếp theo là gì.
+- Chi phí tái thiết lập là chỉ số then chốt. Một harness tốt cần đưa phiên mới vào trạng thái có thể thực thi trong vòng 3 phút.
+- Chiến lược hỗn hợp: tác vụ ngắn xử lý trong phiên, tác vụ dài dùng artifact có cấu trúc để duy trì tính liên tục.
 
 ## Đọc thêm
 
@@ -173,8 +173,8 @@ So sánh định lượng: thời gian tái xây dựng giảm ~78%, tỷ lệ h
 
 ## Bài tập
 
-1. **Đo lường mất tính liên tục**: Chọn một tác vụ phát triển cần ít nhất 3 phiên. Không cung cấp bất kỳ artifact tính liên tục nào, ghi lại ở mỗi lần bắt đầu phiên xem agent dành bao nhiêu ngữ cảnh để "tìm hiểu chuyện gì đã xảy ra lần trước." Sau mỗi phiên, tạo một tệp tiến độ và để phiên tiếp theo bắt đầu từ đó. So sánh chi phí tái xây dựng có và không có tệp tiến độ.
+1. **Đo lường chi phí tái thiết lập**: Chọn một tác vụ phát triển cần ít nhất 3 phiên. Không cung cấp bất kỳ tệp lưu trữ trạng thái nào, ở mỗi lần mở phiên hãy ghi lại xem agent tốn bao nhiêu ngữ cảnh để "tìm hiểu lần trước đã xảy ra chuyện gì". Sau mỗi phiên, tạo một tệp tiến độ rồi để phiên kế tiếp mở từ đó. So sánh chi phí tái thiết lập giữa có và không có tệp tiến độ.
 
-2. **Thiết kế mẫu bàn giao**: Thiết kế một mẫu bàn giao tối giản với bốn trường: trạng thái repo (hash commit), trạng thái runtime (tỷ lệ vượt qua test), các chướng ngại vật, các hành động tiếp theo. Để một phiên agent hoàn toàn mới phục hồi trạng thái dự án chỉ sử dụng mẫu này. Ghi lại các điểm mơ hồ gặp phải trong quá trình phục hồi, cải tiến mẫu lặp đi lặp lại.
+2. **Thiết kế mẫu bàn giao**: Thiết kế một mẫu bàn giao tối giản với bốn trường: trạng thái repo (hash commit), trạng thái runtime (tỷ lệ test pass), các chướng ngại, hành động kế tiếp. Để một phiên agent hoàn toàn mới khôi phục trạng thái dự án chỉ dựa trên mẫu này. Ghi lại các điểm mơ hồ phát sinh trong quá trình khôi phục, rồi lặp lại để cải thiện mẫu.
 
-3. **Thí nghiệm chiến lược hỗn hợp**: Trong một tác vụ phát triển 5 phiên, so sánh ba chiến lược: (a) luôn bắt đầu phiên mới + tệp tiến độ, (b) làm càng nhiều càng tốt trong một phiên (nén ngữ cảnh), (c) chiến lược hỗn hợp (tác vụ ngắn trong phiên, tác vụ dài xuyên phiên + tệp tiến độ). So sánh thời gian tái xây dựng, tỷ lệ hoàn thành tính năng và tính nhất quán của quyết định.
+3. **Thí nghiệm chiến lược hỗn hợp**: Với một tác vụ phát triển 5 phiên, so sánh ba chiến lược: (a) luôn mở phiên mới kết hợp tệp tiến độ, (b) cố gắng làm trọn trong một phiên (nén ngữ cảnh), (c) chiến lược hỗn hợp (tác vụ ngắn trong phiên, tác vụ dài qua nhiều phiên cộng tệp tiến độ). So sánh thời gian tái thiết lập, tỷ lệ hoàn thành tính năng và tính nhất quán của các quyết định.

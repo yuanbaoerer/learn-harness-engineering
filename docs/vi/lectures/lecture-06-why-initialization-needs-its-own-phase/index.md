@@ -1,144 +1,144 @@
 [English Version →](../../../en/lectures/lecture-06-why-initialization-needs-its-own-phase/) | [中文版本 →](../../../zh/lectures/lecture-06-why-initialization-needs-its-own-phase/)
 
-> Ví dụ mã nguồn: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-06-why-initialization-needs-its-own-phase/code/)
+> Ví dụ code: [code/](https://github.com/walkinglabs/learn-harness-engineering/blob/main/docs/vi/lectures/lecture-06-why-initialization-needs-its-own-phase/code/)
 > Dự án thực hành: [Dự án 03. Tính liên tục đa phiên](./../../projects/project-03-multi-session-continuity/index.md)
 
-# Bài 06. Khởi tạo Trước Mỗi Phiên Agent
+# Bài 06. Khởi tạo trước mỗi phiên agent
 
-Bạn bắt đầu một phiên agent mới và nói "thêm tính năng tìm kiếm." Nó nhảy thẳng vào việc lập trình — sự nhiệt tình đáng ngưỡng mộ. Sau 20 phút, nó phát hiện ra khung test chưa được cấu hình đúng, dành thêm 10 phút để sửa cái đó, sau đó định dạng script migration cơ sở dữ liệu sai, loay hoay thêm. Tính năng tìm kiếm cuối cùng được thêm vào, nhưng toàn bộ phiên không hiệu quả — hầu hết thời gian dành cho "tìm hiểu dự án này hoạt động như thế nào" thay vì viết tính năng tìm kiếm.
+Bạn mở một phiên agent mới và nói "thêm tính năng tìm kiếm". Nó lao thẳng vào code, nhiệt tình đáng khen. 20 phút sau nó phát hiện khung test chưa cấu hình xong, mất thêm 10 phút sửa, rồi lại thấy script migration cơ sở dữ liệu sai định dạng, lại loay hoay tiếp. Tính năng tìm kiếm cuối cùng cũng xong, nhưng cả phiên rất kém hiệu quả. Phần lớn thời gian đổ vào chuyện "tìm hiểu dự án này vận hành ra sao" thay vì viết tính năng tìm kiếm.
 
-Cách tiếp cận tốt hơn: trước khi để agent bắt đầu làm việc, sử dụng một giai đoạn riêng để chuẩn bị môi trường cơ sở, các lệnh xác minh vượt qua, và cấu trúc dự án được hiểu. Giống như xây nhà — bạn không đổ móng và dựng tường cùng một lúc. Nếu bạn làm vậy, tường dựng lên trước khi móng đã đông cứng, và cả tòa nhà phải bị phá đi và bắt đầu lại. Đổ móng trước, để móng đông cứng, rồi xây tường — sạch sẽ và hiệu quả.
+Cách làm tốt hơn: trước khi cho agent bắt tay vào việc, hãy dành một giai đoạn riêng để chuẩn bị môi trường nền, chạy thông suốt các lệnh xác minh, và nắm được cấu trúc dự án. Việc khởi tạo không nên bị nhồi chung với việc triển khai tính năng, vì chúng là hai loại công việc về bản chất khác nhau.
 
-Bài giảng này giải thích tại sao khởi tạo phải là một giai đoạn riêng, không được trộn lẫn với triển khai.
+Bài giảng này phân tích vì sao khởi tạo phải là một giai đoạn riêng, chứ không trộn lẫn với triển khai.
 
-## Móng và Tường: Hai Công việc Khác Nhau Về Bản chất
+## Móng và tường: hai công việc khác nhau về bản chất
 
-Khởi tạo và triển khai có mục tiêu tối ưu hóa hoàn toàn khác nhau. Giai đoạn triển khai tối ưu hóa cho: tối đa hóa số lượng và chất lượng của các tính năng được xác minh. Giai đoạn khởi tạo tối ưu hóa cho: tối đa hóa độ tin cậy và hiệu quả của tất cả các triển khai tiếp theo.
+Khởi tạo và triển khai có mục tiêu tối ưu hoàn toàn khác nhau. Giai đoạn triển khai tối ưu cho số lượng và chất lượng tính năng được xác minh. Giai đoạn khởi tạo tối ưu cho độ tin cậy và hiệu quả của mọi phần triển khai phía sau.
 
-Khi bạn trộn khởi tạo và triển khai, agent đối mặt với bài toán tối ưu hóa đa mục tiêu — đồng thời xây dựng cơ sở hạ tầng và viết mã tính năng. Không có cài đặt ưu tiên rõ ràng, agent tự nhiên nghiêng về viết mã (vì đó là kết quả có thể nhìn thấy trực tiếp) trong khi hy sinh cơ sở hạ tầng (vì giá trị của nó chỉ hiện ra trong các phiên sau). Giống như nói với đội xây dựng đồng thời đổ móng và xây tường — họ có thể sẽ vội vàng xây tường vì tường có thể nhìn thấy và trình diễn được. Nhưng một ngôi nhà có móng tệ có vấn đề hệ thống về sau.
+Khi trộn khởi tạo với triển khai, agent đối mặt bài toán tối ưu đa mục tiêu: vừa xây hạ tầng, vừa viết code tính năng. Không có thiết lập ưu tiên rõ ràng, agent tự nhiên nghiêng về việc viết code (vì đó là sản phẩm nhìn thấy ngay), còn hạ tầng bị xem nhẹ (vì giá trị chỉ bộc lộ ở các phiên sau). Hệ quả là hạ tầng không được xây cho ra hồn, và độ tin cậy của code tính năng cũng bị kéo theo.
 
-## Vòng đời Khởi tạo
+## Vòng đời khởi tạo
 
 ```mermaid
 flowchart TB
     subgraph Wrong["Phiên hỗn hợp (sai)"]
-        W1["Bắt đầu ngay vào công việc tính năng"] --> W2["Phát hiện các khoảng trống env và test giữa tác vụ"]
-        W2 --> W3["Tích lũy mã chưa được xác minh"]
-        W3 --> W4["Phiên tiếp theo phải khám phá lại trạng thái dự án"]
+        W1["Bắt đầu ngay vào code tính năng"] --> W2["Phát hiện env và test thiếu sót giữa chừng"]
+        W2 --> W3["Tích tụ code chưa xác minh"]
+        W3 --> W4["Phiên sau phải khám phá lại trạng thái dự án"]
     end
 
     subgraph Right["Khởi tạo riêng biệt (đúng)"]
-        R1["Phiên 1: môi trường có thể chạy"] --> R2["Test mẫu vượt qua"]
-        R2 --> R3["Bootstrap contract + danh sách tác vụ được viết"]
-        R3 --> R4["Checkpoint sạch được commit"]
-        R4 --> R5["Các phiên sau bắt đầu trực tiếp trên các tác vụ đã xác minh"]
+        R1["Phiên 1: môi trường chạy được"] --> R2["Test mẫu pass"]
+        R2 --> R3["Viết startup checklist + danh sách tác vụ"]
+        R3 --> R4["Commit checkpoint sạch"]
+        R4 --> R5["Phiên sau bắt đầu thẳng vào tác vụ đã xác minh"]
     end
 ```
 
-## Điều Gì Xảy ra Khi Bạn Trộn Chúng
+## Chuyện gì xảy ra khi bạn trộn chúng
 
-Vấn đề trực tiếp nhất: móng không đông cứng đúng cách. Agent dành 80% công sức cho mã tính năng và 20% tùy tiện thiết lập một số cơ sở hạ tầng. Khung test được cấu hình nhưng không bao giờ được xác minh, quy tắc lint được thiết lập nhưng quá lỏng, không có tệp tiến độ được tạo. Những khiếm khuyết này không rõ ràng trong phiên đầu tiên (vì agent vẫn nhớ những gì nó đã làm), nhưng chúng nổi lên trong phiên thứ hai — agent mới không biết cách chạy, test, hoặc mọi thứ đang ở đâu. Móng cẩu thả, tòa nhà lung lay.
+Vấn đề trực tiếp nhất: hạ tầng không được xây cho ra hồn. Agent dành 80% sức cho code tính năng, 20% còn lại tiện tay dựng đại vài thứ cho hạ tầng. Khung test cấu hình xong nhưng chưa bao giờ được xác minh, quy tắc lint đặt ra nhưng quá lỏng, không có tệp tiến độ nào được tạo. Những khiếm khuyết ấy không lộ ra ở phiên đầu (vì agent vẫn còn nhớ mình đã làm gì), nhưng bùng lên ở phiên thứ hai: agent mới không biết cách chạy dự án, không biết test ở đâu, không biết mọi thứ đang tới đâu.
 
-Một chi phí ẩn hơn là "tích lũy chưa xác minh" — mã tính năng được viết trước khi khung test được cấu hình là mã không có xác minh. Khi bạn cuối cùng quay lại thêm test cho mã đó, bạn có thể phát hiện ra thiết kế ngay từ đầu đã sai — nếu biết trước, bạn đã triển khai khác đi. Giống như lát gạch lên bê tông ướt — khi bạn phát hiện ra sàn không phẳng, tất cả gạch phải được cạy lên và làm lại.
+Một chi phí ẩn hơn là "tích tụ chưa xác minh". Code tính năng viết trước khi khung test được cấu hình chuẩn, bản thân nó là code không có xác minh. Khi bạn quay lại thêm test, có khi phát hiện ra ngay từ đầu thiết kế đã sai, nếu biết trước, bạn đã triển khai khác đi. Code viết trước càng nhiều, phần phải đập đi làm lại càng lớn.
 
-Ngân sách phiên cũng đang bị lãng phí. Công việc khởi tạo (cấu hình môi trường, thiết lập test, hiểu cấu trúc dự án) tiêu thụ ngân sách đáng kể, để lại ít hơn cho việc triển khai tính năng thực tế. Kết quả: phiên đầu chỉ hoàn thành một nửa tính năng, và phiên thứ hai phải bắt đầu lại hiểu dự án. Ngân sách dành cho móng, nhưng móng cũng không vững — không mục tiêu nào đạt được.
+Ngân sách ngữ cảnh cũng đang bị lãng phí. Phần việc khởi tạo (cấu hình môi trường, dựng test, hiểu cấu trúc dự án) ngốn một mảng lớn ngân sách, để lại ít hơn cho phần triển khai tính năng thật sự. Kết quả: phiên đầu chỉ xong một nửa tính năng, phiên thứ hai vẫn phải bắt đầu lại từ chỗ hiểu dự án. Ngân sách đã đổ vào khởi tạo, mà khởi tạo cũng chẳng ra sao, tệ nhất ở cả hai đầu.
 
-Vấn đề dễ bị bỏ qua nhất là bẫy giả định ẩn. Các quyết định mà agent đưa ra trong quá trình khởi tạo (khung test nào, cách tổ chức thư mục, quản lý phụ thuộc) — nếu không được ghi lại rõ ràng, các phiên sau không thể hiểu những lựa chọn này. Tệ hơn, các phiên sau có thể đưa ra các lựa chọn mâu thuẫn. Đội xây dựng đầu tiên dùng móng bê tông, đội thứ hai không biết và đóng cọc gỗ vào đó — móng nứt.
+Vấn đề dễ bị bỏ qua nhất là bãi mìn giả định ngầm. Những quyết định agent đưa ra trong lúc khởi tạo (dùng khung test nào, tổ chức thư mục ra sao, quản lý dependency thế nào) nếu không ghi lại tường minh, các phiên sau có thể đưa ra lựa chọn mâu thuẫn. Phiên đầu chọn Vitest làm khung test, phiên sau agent không biết, lại đưa Jest vào. Hai khung test cùng tồn tại, chi phí bảo trì nhân đôi.
 
-Nghiên cứu phát triển ứng dụng chạy lâu của Anthropic đặc biệt khuyến nghị tách khởi tạo khỏi triển khai. Dữ liệu thực nghiệm của họ: các dự án sử dụng giai đoạn khởi tạo riêng biệt cho thấy tỷ lệ hoàn thành tính năng cao hơn 31% trong các kịch bản đa phiên so với các cách tiếp cận hỗn hợp. Hiểu biết chính — thời gian đầu tư vào giai đoạn khởi tạo được thu hồi hoàn toàn trong 3-4 phiên tiếp theo. Móng càng vững, tường xây càng nhanh.
+Nghiên cứu về phát triển ứng dụng chạy lâu của Anthropic đặc biệt khuyến nghị tách khởi tạo khỏi triển khai. Dữ liệu thực nghiệm của họ: các dự án có giai đoạn khởi tạo riêng biệt đạt tỷ lệ hoàn thành tính năng cao hơn 31% trong kịch bản đa phiên, so với cách trộn lẫn. Thời gian đầu tư cho khởi tạo được thu hồi hoàn toàn trong 3-4 phiên kế tiếp.
 
-Hướng dẫn harness engineering Codex của OpenAI cũng nhấn mạnh nguyên tắc "kho lưu trữ là bản ghi hoạt động" — thiết lập cấu trúc hoạt động rõ ràng từ lần chạy đầu tiên, hoặc mọi phiên mới phải suy ra lại các quy ước dự án.
+Hướng dẫn harness engineering cho Codex của OpenAI cũng nhấn mạnh nguyên tắc "kho lưu trữ là bản ghi hoạt động": thiết lập cấu trúc vận hành rõ ràng ngay từ lần chạy đầu tiên, nếu không mỗi phiên mới sẽ phải tự suy ra quy ước dự án.
 
-## Các Khái niệm Cốt lõi
+## Các khái niệm cốt lõi
 
-- **Giai đoạn Khởi tạo**: Giai đoạn đầu tiên trong vòng đời của agent — không triển khai tính năng, chỉ thiết lập các điều kiện tiên quyết cho tất cả các giai đoạn triển khai tiếp theo. Kết quả không phải là mã, mà là cơ sở hạ tầng.
-- **Bootstrap Contract**: Các điều kiện mà một dự án có thể được vận hành không mơ hồ bởi một phiên agent mới — có thể bắt đầu, có thể test, có thể thấy tiến độ, có thể chọn bước tiếp theo. Bốn điều kiện, tất cả đều cần thiết.
-- **Khởi động Lạnh vs. Khởi động Ấm (Cold Start vs. Warm Start)**: Khởi động lạnh là từ một thư mục trống nơi agent phải đoán cấu trúc dự án; khởi động ấm là từ một mẫu hoặc dự án hiện có nơi cơ sở hạ tầng đã có sẵn. Khởi động ấm vượt trội hơn nhiều so với khởi động lạnh — giống như bắt đầu làm việc trên công trường có nước chạy và điện so với bắt đầu từ vùng đất hoang.
-- **Sẵn sàng Bàn giao (Handoff Readiness)**: Dự án ở trạng thái tại bất kỳ thời điểm nào mà một agent mới có thể tiếp quản. Không cần giải thích bằng lời — chỉ cần nội dung repo.
-- **Thời gian Đến Xác minh Đầu tiên (Time to First Verification)**: Thời gian từ khi bắt đầu dự án đến khi điểm tính năng đầu tiên vượt qua xác minh. Đây là chỉ số cốt lõi để đo hiệu quả khởi tạo.
-- **Khả năng Sử dụng Downstream**: Thước đo tốt nhất về chất lượng khởi tạo — tỷ lệ các phiên tiếp theo có thể thực thi thành công các tác vụ mà không cần dựa vào kiến thức ẩn.
+- **Giai đoạn khởi tạo (Initialization Phase)**: Giai đoạn đầu tiên trong vòng đời agent, chỉ thiết lập tiền đề cho mọi giai đoạn triển khai về sau, không phát triển tính năng. Đầu ra của nó là hạ tầng, không phải code nghiệp vụ.
+- **Danh sách kiểm tra sẵn sàng (Startup Readiness Checklist)**: Tập các điều kiện để dự án có thể được một phiên agent mới vận hành một cách rõ ràng: chạy được, test được, thấy tiến độ được, chọn được bước tiếp theo. Bốn điều kiện, tất cả đều cần.
+- **Từ đầu hay từ mẫu (From Scratch vs From Template)**: Từ đầu nghĩa là agent phải tự suy ra cấu trúc dự án từ một thư mục rỗng. Từ mẫu nghĩa là hạ tầng đã có sẵn. Từ mẫu vượt trội hơn hẳn so với từ đầu.
+- **Luôn sẵn sàng bàn giao (Always Ready to Hand Off)**: Dự án ở bất kỳ thời điểm nào cũng trong trạng thái một agent mới có thể tiếp quản. Không cần giải thích bằng lời, chỉ cần nhìn nội dung repo là đủ tiếp tục.
+- **Thời gian từ bắt đầu tới test pass đầu tiên (Time from Start to First Passing Test)**: Khoảng thời gian từ lúc khởi động dự án đến khi điểm tính năng đầu tiên qua được xác minh. Đây là chỉ số cốt lõi để đo hiệu quả khởi tạo.
+- **Tỷ lệ thành công của các phiên sau (Success Rate of Subsequent Sessions)**: Tỷ lệ các phiên tiếp theo có thể thực thi tác vụ thành công mà không dựa vào kiến thức ngầm. Đây là thước đo tốt nhất cho chất lượng khởi tạo.
 
-## Cách Khởi tạo Đúng
+## Cách làm khởi tạo cho đúng
 
-**Coi khởi tạo là một giai đoạn riêng biệt.** Phiên đầu tiên chỉ làm khởi tạo — hoàn toàn không có mã tính năng kinh doanh. Khởi tạo tạo ra:
+**Hãy coi khởi tạo là một giai đoạn riêng biệt.** Phiên đầu tiên chỉ làm khởi tạo, hoàn toàn không có code tính năng nghiệp vụ. Khởi tạo cần tạo ra:
 
-**1. Môi trường có thể chạy.** Dự án khởi động, dependencies được cài đặt, không có vấn đề môi trường. Móng được đổ, không có vết nứt.
+**1. Môi trường chạy được.** Dự án khởi động, dependencies đã cài, không có vấn đề môi trường.
 
-**2. Khung test có thể xác minh.** Ít nhất một test mẫu vượt qua. Điều này chứng minh bản thân khung test được cấu hình đúng — giống như đứng một cột trên móng để chứng minh nó có thể chịu được trọng lượng.
+**2. Khung test xác minh được.** Ít nhất một test mẫu phải pass, chứng minh bản thân khung test đã được cấu hình đúng.
 
-**3. Tài liệu bootstrap contract.** Một tài liệu rõ ràng cho các phiên sau:
+**3. Tài liệu danh sách sẵn sàng.** Một tài liệu rõ ràng dành cho các phiên sau:
 ```markdown
-# Khởi tạo Contract
+# Danh sách kiểm tra sẵn sàng
 
-## Lệnh Khởi động
-- Cài đặt dependencies: `make setup`
-- Khởi động dev server: `make dev`
+## Lệnh khởi động
+- Cài dependencies: `make setup`
+- Chạy dev server: `make dev`
 - Chạy test: `make test`
 - Xác minh đầy đủ: `make check`
 
-## Trạng thái Hiện tại
-- Tất cả dependencies đã được cài đặt và khóa
-- Khung test được cấu hình (Vitest + React Testing Library)
-- Test mẫu vượt qua (1/1)
-- Quy tắc lint được cấu hình (ESLint + Prettier)
+## Trạng thái hiện tại
+- Tất cả dependencies đã cài và khóa
+- Khung test đã cấu hình (Vitest + React Testing Library)
+- Test mẫu đang pass (1/1)
+- Quy tắc lint đã cấu hình (ESLint + Prettier)
 
-## Cấu trúc Dự án
+## Cấu trúc dự án
 - src/ — Mã nguồn
 - src/components/ — React components
 - src/api/ — API client
 - tests/ — Tệp test
 ```
 
-**4. Phân chia tác vụ.** Chia toàn bộ dự án thành danh sách tác vụ có thứ tự, mỗi tác vụ có tiêu chí chấp nhận rõ ràng:
+**4. Phân rã tác vụ.** Chia toàn bộ dự án thành danh sách tác vụ có thứ tự, mỗi tác vụ có tiêu chí chấp nhận rõ ràng:
 ```markdown
-# Phân chia Tác vụ
+# Phân rã tác vụ
 
-## Tác vụ 1: Xác thực Người dùng Cơ bản
+## Tác vụ 1: Xác thực người dùng cơ bản
 - Triển khai JWT auth middleware
 - Thêm endpoint đăng nhập/đăng ký
-- Chấp nhận: pytest tests/test_auth.py tất cả vượt qua
+- Chấp nhận: pytest tests/test_auth.py tất cả đều pass
 
-## Tác vụ 2: Trang Hồ sơ Người dùng
+## Tác vụ 2: Trang hồ sơ người dùng
 - Triển khai CRUD hồ sơ người dùng
 - Thêm form chỉnh sửa hồ sơ
-- Chấp nhận: pytest tests/test_profile.py tất cả vượt qua
+- Chấp nhận: pytest tests/test_profile.py tất cả đều pass
 
-## Tác vụ 3: Tính năng Tìm kiếm
+## Tác vụ 3: Tính năng tìm kiếm
 - ...
 ```
 
-**5. Git commit như checkpoint.** Sau khi khởi tạo hoàn thành, commit một checkpoint sạch. Tất cả công việc tiếp theo bắt đầu từ checkpoint này.
+**5. Git commit làm checkpoint.** Sau khi khởi tạo xong, commit một checkpoint sạch. Mọi phần việc sau đó bắt đầu từ checkpoint này.
 
-**Chiến lược khởi động ấm**: Đừng bắt đầu từ một thư mục trống. Sử dụng mẫu dự án (create-react-app, fastapi-template, v.v.) để đặt trước cấu trúc thư mục chuẩn, cấu hình phụ thuộc và khung test. Nướng các bước khởi tạo thông thường vào mẫu, chỉ để lại công việc khởi tạo cụ thể cho dự án. Giống như bắt đầu làm việc trên công trường có nước chạy và điện — tốt hơn mười nghìn lần so với bắt đầu từ vùng đất hoang.
+**Khởi động từ mẫu**: Đừng bắt đầu từ thư mục rỗng. Hãy dùng template dự án (create-react-app, fastapi-template, v.v.) để dựng sẵn cấu trúc thư mục chuẩn, cấu hình dependency và khung test. Đúc sẵn các bước khởi tạo thông dụng vào template, chỉ chừa lại phần khởi tạo riêng cho dự án.
 
-**Tiêu chí hoàn thành khởi tạo**: Không phải "bao nhiêu mã đã được viết," mà là liệu bốn điều kiện của bootstrap contract có được đáp ứng không — có thể bắt đầu, có thể test, có thể thấy tiến độ, có thể chọn bước tiếp theo. Sử dụng danh sách kiểm tra này để xác nhận khởi tạo:
+**Tiêu chí hoàn thành khởi tạo**: Không phải "viết được bao nhiêu code", mà là bốn điều kiện trong danh sách sẵn sàng có được đáp ứng hay không: chạy được, test được, thấy tiến độ được, chọn được bước tiếp theo. Hãy dùng danh sách này để xác nhận khởi tạo:
 
 ```markdown
-## Danh sách Kiểm tra Chấp nhận Khởi tạo
-- [ ] `make setup` thành công từ đầu
-- [ ] `make test` có ít nhất một test vượt qua
-- [ ] Một phiên agent mới có thể trả lời "làm thế nào để chạy" và "làm thế nào để test" chỉ từ nội dung repo
-- [ ] Tệp phân chia tác vụ tồn tại với ít nhất 3 tác vụ
-- [ ] Mọi thứ đã được commit vào git
+## Danh sách chấp nhận khởi tạo
+- [ ] `make setup` chạy thành công từ đầu
+- [ ] `make test` có ít nhất một test pass
+- [ ] Một phiên agent mới có thể trả lời "chạy thế nào" và "test thế nào" chỉ dựa vào nội dung repo
+- [ ] Tệp phân rã tác vụ tồn tại, có ít nhất 3 tác vụ
+- [ ] Tất cả đã được commit vào git
 ```
 
-## Ví dụ Thực tế
+## Ví dụ thật
 
-Hai cách tiếp cận khởi tạo cho một dự án frontend React:
+Hai cách khởi tạo cho một dự án frontend React, đặt cạnh nhau để so sánh:
 
-**Cách tiếp cận hỗn hợp (đồng thời đổ móng và xây tường)**: Agent đồng thời tạo scaffolding dự án và triển khai tính năng đầu tiên trong phiên 1. Ở cuối phiên, repo có mã có thể chạy nhưng: không có tài liệu lệnh bắt đầu/test rõ ràng, không có tệp theo dõi tiến độ, không có phân chia tác vụ. Phiên 2 dành ~20 phút để suy ra cấu trúc dự án, khung test và quy trình build — giống như đội xây dựng mới đến công trường, không biết móng đã chạy đến đâu hoặc đường ống nước ở đâu, phải đào lỗ từng chỗ để tìm ra.
+**Cách trộn lẫn**: Agent vừa tạo scaffolding dự án, vừa triển khai tính năng đầu tiên ngay trong phiên 1. Kết thúc phiên, repo có code chạy được nhưng không có tài liệu lệnh start/test rõ ràng, không có tệp theo dõi tiến độ, không có phân rã tác vụ. Phiên 2 mất khoảng 20 phút để dò ra cấu trúc dự án, khung test và quy trình build.
 
-**Khởi tạo riêng biệt (móng trước)**: Phiên 1 chỉ làm khởi tạo — tạo cấu trúc thư mục từ mẫu, cấu hình khung test (Vitest + React Testing Library), viết và xác minh một test mẫu, tạo tài liệu bootstrap contract và tệp phân chia tác vụ, commit checkpoint ban đầu. Chi phí tái xây dựng của phiên 2 dưới 3 phút, và nó bắt đầu làm việc trực tiếp từ danh sách tác vụ — đội đến, nhìn vào bản vẽ, và biết chính xác nơi cần tiếp tục.
+**Khởi tạo riêng biệt**: Phiên 1 chỉ làm khởi tạo, tạo cấu trúc thư mục từ template, cấu hình khung test (Vitest + React Testing Library), viết và xác minh một test mẫu, tạo danh sách sẵn sàng và tệp phân rã tác vụ, commit checkpoint khởi đầu. Chi phí tái thiết lập của phiên 2 dưới 3 phút, và nó bắt đầu làm việc ngay từ danh sách tác vụ.
 
-So sánh chu kỳ dự án đầy đủ: tổng thời gian tái xây dựng (qua tất cả các phiên) của cách tiếp cận hỗn hợp cao hơn ~60% so với cách tiếp cận khởi tạo riêng biệt. 20 phút thêm dành cho khởi tạo được thu hồi nhiều lần trong các phiên tiếp theo. Giống như móng vững giúp tường xây nhanh hơn — chậm là nhanh.
+So sánh toàn chu kỳ dự án: tổng thời gian tái thiết lập (cộng dồn qua các phiên) của cách trộn lẫn cao hơn khoảng 60% so với cách khởi tạo riêng. 20 phút thêm dành cho khởi tạo được thu hồi gấp nhiều lần trong các phiên tiếp theo. Đầu tư thêm chút thời gian ở đầu để khởi tạo cho đúng, hiệu quả về sau thực ra cao hơn hẳn.
 
-## Những Điểm chính cần Nhớ
+## Những điểm chính cần nhớ
 
-- Khởi tạo và triển khai có mục tiêu tối ưu hóa khác nhau — trộn lẫn chúng chỉ kéo cả hai xuống. Đổ móng trước, rồi xây tường.
-- Kết quả của khởi tạo không phải là mã, mà là cơ sở hạ tầng: môi trường có thể chạy, test có thể xác minh, bootstrap contract, phân chia tác vụ.
-- Xác nhận khởi tạo bằng bốn điều kiện của bootstrap contract: có thể bắt đầu, có thể test, có thể thấy tiến độ, có thể chọn bước tiếp theo.
-- Khởi động ấm tốt hơn khởi động lạnh. Sử dụng mẫu dự án để đặt trước cơ sở hạ tầng chuẩn hóa.
-- Thời gian đầu tư vào khởi tạo được thu hồi hoàn toàn trong 3-4 phiên tiếp theo. Đây không phải chi phí thêm — đó là đầu tư trước. Móng càng vững, tòa nhà xây càng nhanh.
+- Khởi tạo và triển khai có mục tiêu tối ưu khác nhau, trộn lẫn chỉ kéo cả hai xuống.
+- Đầu ra của khởi tạo không phải code nghiệp vụ, mà là hạ tầng: môi trường chạy được, test xác minh được, danh sách sẵn sàng, phân rã tác vụ.
+- Xác nhận khởi tạo bằng bốn điều kiện trong danh sách sẵn sàng: chạy được, test được, thấy tiến độ được, chọn được bước tiếp theo.
+- Khởi động từ mẫu tốt hơn từ đầu. Hãy dùng template dự án để dựng sẵn hạ tầng chuẩn hoá.
+- Thời gian đầu tư cho khởi tạo được thu hồi hoàn toàn trong 3-4 phiên kế tiếp. Đây không phải chi phí thêm, mà là khoản đầu tư trả trước.
 
 ## Đọc thêm
 
@@ -150,8 +150,8 @@ So sánh chu kỳ dự án đầy đủ: tổng thời gian tái xây dựng (qu
 
 ## Bài tập
 
-1. **Thiết kế bootstrap contract**: Viết một bootstrap contract hoàn chỉnh cho một dự án bạn đang phát triển. Sau đó mở một phiên agent hoàn toàn mới, chỉ hiển thị nội dung repo (không có ngữ cảnh lời nói), và để nó thử bắt đầu dự án, chạy test và hiểu tiến độ hiện tại. Ghi lại mọi vấn đề gặp phải — mỗi vấn đề tương ứng với một điều khoản còn thiếu trong bootstrap contract của bạn.
+1. **Thiết kế danh sách sẵn sàng**: Viết một danh sách sẵn sàng hoàn chỉnh cho một dự án bạn đang phát triển. Rồi mở một phiên agent hoàn toàn mới, chỉ cho nó xem nội dung repo (không kèm bất kỳ ngữ cảnh lời nói nào), để nó thử khởi động dự án, chạy test và hiểu tiến độ hiện tại. Ghi lại mọi vấn đề gặp phải, mỗi vấn đề ứng với một điều khoản còn thiếu trong danh sách sẵn sàng của bạn.
 
-2. **Thí nghiệm so sánh**: Chọn một dự án mới cỡ vừa. Cách A: để agent đồng thời khởi tạo và thực hiện triển khai đầu tiên. Cách B: dành một phiên cho khởi tạo riêng biệt, bắt đầu triển khai trong phiên 2. Sau 4 phiên, so sánh: thời gian đến xác minh đầu tiên, chi phí tái xây dựng, tỷ lệ hoàn thành tính năng.
+2. **Thí nghiệm so sánh**: Chọn một dự án mới cỡ vừa. Cách A: để agent vừa khởi tạo vừa triển khai tính năng đầu tiên. Cách B: dành riêng một phiên cho khởi tạo, bắt đầu triển khai từ phiên 2. Sau 4 phiên, so sánh: thời gian tới test pass đầu tiên, chi phí tái thiết lập, tỷ lệ hoàn thành tính năng.
 
-3. **Danh sách kiểm tra chấp nhận khởi tạo**: Thiết kế một danh sách kiểm tra chấp nhận khởi tạo cho dự án của bạn. Để một phiên agent mới thực thi từng mục trong danh sách kiểm tra và ghi lại cái nào vượt qua và cái nào thất bại. Các mục thất bại là nơi harness của bạn cần được tăng cường.
+3. **Danh sách chấp nhận khởi tạo**: Thiết kế một danh sách chấp nhận khởi tạo cho dự án của bạn. Để một phiên agent mới thực thi từng mục trong danh sách và ghi lại mục nào đậu, mục nào trượt. Những mục trượt chính là chỗ harness của bạn cần được củng cố.
