@@ -50,6 +50,7 @@ export const IPC_CHANNELS = {
   IMPORT_DOCUMENT: 'documents:import',
   GET_DOCUMENT: 'documents:get',
   DELETE_DOCUMENT: 'documents:delete',
+  PICK_IMPORT_DOCUMENT: 'documents:pickImport',
 
   // Indexing
   START_INDEXING: 'indexing:start',

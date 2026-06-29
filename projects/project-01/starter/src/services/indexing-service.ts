@@ -31,6 +31,12 @@ export class IndexingService {
       }
       const chunks = this.chunkDocument(documentId, content);
       this.persistence.writeJson(`${CHUNKS_DIR}/${documentId}.json`, chunks);
+
+      // Keep the index manifest in sync so retrieval (getAllChunks) sees it.
+      const chunksMeta = this.persistence.readJson<Record<string, string[]>>(INDEX_META) ?? {};
+      chunksMeta[documentId] = chunks.map(c => c.id);
+      this.persistence.writeJson(INDEX_META, chunksMeta);
+
       return this.getStatus();
     }
 

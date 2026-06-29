@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Document, Chunk } from '../../../shared/types';
+import { useEffect, useState } from 'react';
+import { Document, Chunk } from '../../shared/types';
 
 interface Props {
   document: Document;

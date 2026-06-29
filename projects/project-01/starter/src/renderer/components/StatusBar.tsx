@@ -1,5 +1,4 @@
-import React from 'react';
-import { AppStatus } from '../../../shared/types';
+import { AppStatus } from '../../shared/types';
 
 interface Props {
   status: AppStatus;

@@ -9,6 +9,7 @@ declare global {
         import: (filePath: string) => Promise<import('../shared/types').Document>;
         get: (id: string) => Promise<import('../shared/types').Document | null>;
         delete: (id: string) => Promise<boolean>;
+        pickAndImport: () => Promise<import('../shared/types').Document[]>;
       };
       indexing: {
         start: (documentId?: string) => Promise<import('../shared/types').AppStatus>;

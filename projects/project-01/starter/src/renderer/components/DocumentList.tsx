@@ -1,5 +1,4 @@
-import React from 'react';
-import { Document } from '../../../shared/types';
+import { Document } from '../../shared/types';
 
 interface Props {
   documents: Document[];

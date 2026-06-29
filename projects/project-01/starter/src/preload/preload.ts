@@ -7,6 +7,7 @@ const api = {
     import: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.IMPORT_DOCUMENT, filePath),
     get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.GET_DOCUMENT, id),
     delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.DELETE_DOCUMENT, id),
+    pickAndImport: () => ipcRenderer.invoke(IPC_CHANNELS.PICK_IMPORT_DOCUMENT),
   },
   indexing: {
     start: (documentId?: string) => ipcRenderer.invoke(IPC_CHANNELS.START_INDEXING, documentId),
